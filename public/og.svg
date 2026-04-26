@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0a0e1a"/>
+      <stop offset="100%" stop-color="#0b1428"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="logo" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="text" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#94a3b8"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <ellipse cx="600" cy="0" rx="700" ry="320" fill="url(#glow)"/>
+
+  <!-- subtle grid -->
+  <g stroke="#1e293b" stroke-opacity="0.4" stroke-width="1">
+    <path d="M0 80 H1200 M0 160 H1200 M0 240 H1200 M0 320 H1200 M0 400 H1200 M0 480 H1200 M0 560 H1200"/>
+    <path d="M120 0 V630 M240 0 V630 M360 0 V630 M480 0 V630 M600 0 V630 M720 0 V630 M840 0 V630 M960 0 V630 M1080 0 V630"/>
+  </g>
+
+  <!-- logo -->
+  <g transform="translate(100 100)">
+    <rect width="76" height="76" rx="18" fill="url(#logo)"/>
+    <path d="M16 56 L32 38 L42 48 L60 24" stroke="white" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="60" cy="24" r="4" fill="white"/>
+  </g>
+  <text x="200" y="155" font-family="Inter, system-ui, sans-serif" font-size="42" font-weight="600" fill="white">FinHub</text>
+
+  <!-- headline -->
+  <text x="100" y="320" font-family="Inter, system-ui, sans-serif" font-size="84" font-weight="700" fill="url(#text)">Your financial</text>
+  <text x="100" y="410" font-family="Inter, system-ui, sans-serif" font-size="84" font-weight="700" fill="#3b82f6">command center.</text>
+
+  <!-- subline -->
+  <text x="100" y="480" font-family="Inter, system-ui, sans-serif" font-size="26" fill="#94a3b8">Stocks · portfolios · AI research · news · calculators</text>
+
+  <!-- mini sparkline accent -->
+  <g transform="translate(100 530)">
+    <path d="M0 30 Q 60 10, 120 22 T 240 8 T 360 16 T 480 4" stroke="#10b981" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <circle cx="480" cy="4" r="6" fill="#10b981"/>
+  </g>
+</svg>
