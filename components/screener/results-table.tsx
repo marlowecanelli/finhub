@@ -59,7 +59,7 @@ export function ResultsTable({ rows, sort, onSort, page, pageSize, onPage }: Pro
                           sort.key === col.key && sort.dir === "desc"
                             ? "asc"
                             : "desc";
-                        onSort({ key: col.key, dir });
+                        if (col.key) onSort({ key: col.key, dir });
                       }}
                       className={cn(
                         "inline-flex items-center gap-1 transition-colors hover:text-foreground",
