@@ -63,22 +63,27 @@ export function PriceChart({
     return (points[points.length - 1]!.c ?? 0) >= (points[0]!.c ?? 0);
   }, [points]);
 
-  const stroke = up ? "#10b981" : "#ef4444";
+  const stroke = up ? "hsl(156 100% 60%)" : "hsl(348 95% 65%)";
 
   return (
-    <div className="glass p-5 md:p-6">
+    <div className="card-edge relative overflow-hidden rounded-xl border border-border/80 bg-card/40 p-5 backdrop-blur-xl md:p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold text-muted-foreground">
-          Price history
-        </h2>
-        <div className="inline-flex rounded-lg border border-border/60 bg-background/50 p-0.5">
+        <div className="flex items-baseline gap-3">
+          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+            Section
+          </span>
+          <h2 className="font-display text-xl font-medium tracking-tight">
+            Price history
+          </h2>
+        </div>
+        <div className="inline-flex rounded-md border border-border/80 bg-background/50 p-0.5">
           {TIMEFRAMES.map((label) => (
             <button
               key={label}
               type="button"
               onClick={() => setTf(label)}
               className={cn(
-                "relative rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                "relative rounded-sm px-2.5 py-1 text-xs font-medium transition-colors",
                 tf === label
                   ? "text-foreground"
                   : "text-muted-foreground hover:text-foreground"
@@ -88,11 +93,11 @@ export function PriceChart({
               {tf === label && (
                 <motion.span
                   layoutId="chart-tf"
-                  className="absolute inset-0 rounded-md bg-primary/15 ring-1 ring-inset ring-primary/30"
+                  className="absolute inset-0 rounded-sm bg-foreground/[0.08] ring-1 ring-inset ring-foreground/[0.1]"
                   transition={{ type: "spring", stiffness: 400, damping: 30 }}
                 />
               )}
-              <span className="relative font-mono">{label}</span>
+              <span className="relative font-mono tabular-nums">{label}</span>
             </button>
           ))}
         </div>
@@ -149,7 +154,10 @@ export function PriceChart({
                 strokeWidth={2}
                 fill={`url(#price-fill-${symbol})`}
                 isAnimationActive
-                animationDuration={600}
+                animationDuration={1200}
+                style={{
+                  filter: `drop-shadow(0 0 6px ${stroke}88)`,
+                }}
               />
             </AreaChart>
           </ResponsiveContainer>

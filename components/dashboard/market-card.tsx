@@ -1,5 +1,5 @@
-import { ArrowDownRight, ArrowUpRight, type LucideIcon } from "lucide-react";
-import { cn, formatPercent } from "@/lib/utils";
+import { type LucideIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type Props = {
   label: string;
@@ -16,73 +16,87 @@ export function MarketCard({
   value,
   changePct,
   icon: Icon,
-  accent,
 }: Props) {
   const up = changePct >= 0;
+  const colorVar = up ? "hsl(var(--signal))" : "hsl(348 95% 65%)";
+
   return (
-    <div className="glass glass-hover group p-5">
-      <div className="mb-4 flex items-start justify-between">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            {label}
+    <div className="card-edge group relative overflow-hidden rounded-xl border border-border/80 bg-card/40 p-6 backdrop-blur-xl lift">
+      {/* Hover glow */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full opacity-0 blur-3xl transition-opacity duration-700 group-hover:opacity-100"
+        style={{ background: colorVar }}
+      />
+
+      <div className="relative z-10">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              {label}
+            </p>
+            <p className="mt-1 font-mono text-[11px] text-foreground/55">
+              {symbol}
+            </p>
+          </div>
+          <Icon className="h-3.5 w-3.5 text-foreground/30 transition-colors group-hover:text-foreground/70" />
+        </div>
+
+        <div className="mt-5 flex items-end justify-between gap-3">
+          <p className="font-display text-3xl font-medium tracking-tight tabular-nums md:text-4xl">
+            {value}
           </p>
-          <p className="mt-1 text-sm font-medium text-foreground/80">{symbol}</p>
+          <span
+            className={cn(
+              "inline-flex shrink-0 items-center gap-1 font-mono text-xs tabular-nums"
+            )}
+            style={{ color: colorVar }}
+          >
+            {up ? "▲" : "▼"} {Math.abs(changePct).toFixed(2)}%
+          </span>
         </div>
+
+        <div className="mt-5 h-12 w-full overflow-hidden">
+          <Sparkline up={up} color={colorVar} />
+        </div>
+
         <div
-          className={cn(
-            "flex h-8 w-8 items-center justify-center rounded-lg ring-1 ring-inset",
-            accent
-          )}
-        >
-          <Icon className="h-4 w-4" />
-        </div>
-      </div>
-      <div className="flex items-end justify-between">
-        <p className="font-mono text-2xl font-semibold tracking-tight">
-          {value}
-        </p>
-        <span
-          className={cn(
-            "inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 font-mono text-xs font-medium",
-            up
-              ? "bg-[hsl(var(--primary)/0.0)] text-[#10b981]"
-              : "text-[#ef4444]"
-          )}
-        >
-          {up ? (
-            <ArrowUpRight className="h-3 w-3" />
-          ) : (
-            <ArrowDownRight className="h-3 w-3" />
-          )}
-          {formatPercent(changePct)}
-        </span>
-      </div>
-      <div className="mt-4 h-10 w-full overflow-hidden rounded-md">
-        <Sparkline up={up} />
+          className="mt-3 h-px w-full origin-left scale-x-0 transition-transform duration-700 group-hover:scale-x-100"
+          style={{ background: colorVar }}
+        />
       </div>
     </div>
   );
 }
 
-function Sparkline({ up }: { up: boolean }) {
+function Sparkline({ up, color }: { up: boolean; color: string }) {
   const d = up
-    ? "M0 30 Q 20 20, 35 22 T 70 12 T 110 8 T 160 4"
-    : "M0 8 Q 20 18, 35 16 T 70 26 T 110 30 T 160 34";
-  const color = up ? "#10b981" : "#ef4444";
+    ? "M0 32 C 20 28, 30 24, 50 22 S 80 18, 100 12 S 130 6, 160 4"
+    : "M0 6 C 20 10, 30 14, 50 16 S 80 22, 100 28 S 130 32, 160 36";
+  const id = up ? "u" : "d";
   return (
     <svg
       viewBox="0 0 160 40"
       preserveAspectRatio="none"
-      className="h-full w-full"
+      className="h-full w-full overflow-visible"
     >
       <defs>
-        <linearGradient id={`spark-${up ? "u" : "d"}`} x1="0" x2="0" y1="0" y2="1">
+        <linearGradient id={`spark-${id}`} x1="0" x2="0" y1="0" y2="1">
           <stop offset="0%" stopColor={color} stopOpacity="0.25" />
           <stop offset="100%" stopColor={color} stopOpacity="0" />
         </linearGradient>
       </defs>
-      <path d={`${d} L160 40 L0 40 Z`} fill={`url(#spark-${up ? "u" : "d"})`} />
-      <path d={d} fill="none" stroke={color} strokeWidth="1.5" />
+      <path d={`${d} L160 40 L0 40 Z`} fill={`url(#spark-${id})`} />
+      <path
+        d={d}
+        fill="none"
+        stroke={color}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        style={{
+          filter: `drop-shadow(0 0 6px ${color}aa)`,
+        }}
+      />
     </svg>
   );
 }

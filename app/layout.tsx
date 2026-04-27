@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono, Instrument_Serif, Fraunces } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ToastProvider } from "@/components/toast/toast-provider";
 import "./globals.css";
@@ -16,17 +16,31 @@ const jetbrainsMono = JetBrains_Mono({
   display: "swap",
 });
 
-const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+const instrumentSerif = Instrument_Serif({
+  subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
+  variable: "--font-instrument-serif",
+  display: "swap",
+});
+
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-fraunces",
+  display: "swap",
+  axes: ["opsz"],
+});
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "FinHub — Your financial command center",
+    default: "FinHub — A terminal for the rest of us.",
     template: "%s · FinHub",
   },
   description:
-    "Research stocks, build portfolios, track goals, and stay ahead of the market. FinHub brings premium finance tools into one beautiful workspace.",
+    "Research equities, build portfolios, track goals, and read the market — all in one editorial-grade workspace.",
   keywords: [
     "stock screener",
     "portfolio tracker",
@@ -38,9 +52,9 @@ export const metadata: Metadata = {
   authors: [{ name: "FinHub" }],
   icons: { icon: "/favicon.svg" },
   openGraph: {
-    title: "FinHub — Your financial command center",
+    title: "FinHub — A terminal for the rest of us.",
     description:
-      "Research stocks, build portfolios, track goals, and stay ahead of the market.",
+      "Research equities, build portfolios, track goals, and read the market.",
     url: SITE_URL,
     siteName: "FinHub",
     images: ["/og.svg"],
@@ -49,7 +63,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "FinHub",
-    description: "Your financial command center.",
+    description: "A terminal for the rest of us.",
     images: ["/og.svg"],
   },
   robots: { index: true, follow: true },
@@ -57,8 +71,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0e1a" },
+    { media: "(prefers-color-scheme: light)", color: "#f5f1ea" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
   ],
   width: "device-width",
   initialScale: 1,
@@ -73,9 +87,9 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${inter.variable} ${jetbrainsMono.variable}`}
+      className={`${inter.variable} ${jetbrainsMono.variable} ${instrumentSerif.variable} ${fraunces.variable}`}
     >
-      <body className="min-h-screen bg-background font-sans">
+      <body className="grain min-h-screen bg-background font-sans">
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"

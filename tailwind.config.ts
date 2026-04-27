@@ -58,6 +58,8 @@ const config: Config = {
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],
         mono: ["var(--font-jetbrains-mono)", "ui-monospace", "monospace"],
+        serif: ["var(--font-instrument-serif)", "Iowan Old Style", "Palatino", "serif"],
+        display: ["var(--font-fraunces)", "Iowan Old Style", "Palatino", "serif"],
       },
       borderRadius: {
         lg: "var(--radius)",

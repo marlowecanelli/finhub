@@ -23,12 +23,15 @@ export function Sidebar() {
       )}
     >
       <div className="flex h-16 items-center justify-between border-b border-border/60 px-4">
-        <Link href="/dashboard" className="flex items-center gap-2 overflow-hidden">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/60 shadow-lg shadow-primary/30">
-            <LineChart className="h-4 w-4 text-primary-foreground" />
+        <Link href="/dashboard" className="flex items-center gap-2.5 overflow-hidden">
+          <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-sm bg-foreground text-background">
+            <span className="font-display text-base font-semibold leading-none">
+              F
+            </span>
+            <div className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-[hsl(var(--signal))] shadow-[0_0_8px_hsl(var(--signal))] animate-[signal-pulse_2.4s_ease-in-out_infinite]" />
           </div>
           {!collapsed && (
-            <span className="truncate text-base font-semibold tracking-tight">
+            <span className="truncate font-display text-lg font-medium tracking-tight">
               FinHub
             </span>
           )}
@@ -67,14 +70,19 @@ export function Sidebar() {
                   {active && (
                     <motion.span
                       layoutId="sidebar-active"
-                      className="absolute inset-0 rounded-lg bg-primary/10 ring-1 ring-inset ring-primary/30"
+                      className="absolute inset-0 rounded-md bg-foreground/[0.06] ring-1 ring-inset ring-foreground/[0.08]"
                       transition={{ type: "spring", stiffness: 400, damping: 30 }}
                     />
+                  )}
+                  {active && (
+                    <span className="absolute left-0 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full bg-[hsl(var(--signal))] shadow-[0_0_8px_hsl(var(--signal))]" />
                   )}
                   <Icon
                     className={cn(
                       "relative h-4 w-4 shrink-0 transition-colors",
-                      active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                      active
+                        ? "text-foreground"
+                        : "text-muted-foreground group-hover:text-foreground"
                     )}
                   />
                   {!collapsed && <span className="relative">{item.label}</span>}

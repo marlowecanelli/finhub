@@ -66,7 +66,8 @@ export function AuthForm({ mode }: { mode: Mode }) {
     }
   }
 
-  const title = mode === "sign-in" ? "Welcome back" : "Create your account";
+  const eyebrow = mode === "sign-in" ? "Returning reader" : "New subscription";
+  const title = mode === "sign-in" ? "Welcome back." : "Create your account.";
   const subtitle =
     mode === "sign-in"
       ? "Sign in to access your portfolio and insights."
@@ -79,10 +80,18 @@ export function AuthForm({ mode }: { mode: Mode }) {
       transition={{ duration: 0.35, ease: "easeOut" }}
       className="w-full"
     >
-      <div className="glass p-8">
-        <div className="mb-6 space-y-1.5 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-          <p className="text-sm text-muted-foreground">{subtitle}</p>
+      <div className="card-edge relative overflow-hidden rounded-2xl border border-border/80 bg-card/60 p-8 backdrop-blur-2xl md:p-10">
+        <div className="mb-8 text-center">
+          <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            {eyebrow}
+          </p>
+          <h1 className="mt-3 font-display text-4xl font-medium tracking-tight md:text-5xl">
+            {title.split(" ").slice(0, -1).join(" ")}{" "}
+            <span className="display-italic text-foreground/70">
+              {title.split(" ").slice(-1)[0]}
+            </span>
+          </h1>
+          <p className="mt-3 text-sm text-foreground/65">{subtitle}</p>
         </div>
 
         <Button
@@ -100,16 +109,18 @@ export function AuthForm({ mode }: { mode: Mode }) {
           <div className="absolute inset-0 flex items-center">
             <span className="w-full border-t border-border/60" />
           </div>
-          <div className="relative flex justify-center text-xs uppercase tracking-wider">
-            <span className="bg-card/40 px-2 text-muted-foreground backdrop-blur-sm">
-              or
+          <div className="relative flex justify-center">
+            <span className="bg-card/60 px-3 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground backdrop-blur-sm">
+              or with email
             </span>
           </div>
         </div>
 
         <form onSubmit={handleEmail} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email" className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Email
+            </Label>
             <Input
               id="email"
               type="email"
@@ -121,7 +132,9 @@ export function AuthForm({ mode }: { mode: Mode }) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password" className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              Password
+            </Label>
             <Input
               id="password"
               type="password"
@@ -140,25 +153,25 @@ export function AuthForm({ mode }: { mode: Mode }) {
             </p>
           )}
 
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" variant="signal" className="sweep w-full" disabled={loading}>
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
-            {mode === "sign-in" ? "Sign in" : "Create account"}
+            {mode === "sign-in" ? "Sign in →" : "Create account →"}
           </Button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-muted-foreground">
+        <p className="mt-6 text-center font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
           {mode === "sign-in" ? (
             <>
-              Don&apos;t have an account?{" "}
-              <Link href="/sign-up" className="text-foreground underline-offset-4 hover:underline">
-                Sign up
+              No account?{" "}
+              <Link href="/sign-up" className="text-foreground hover:text-[hsl(var(--signal))]">
+                Sign up →
               </Link>
             </>
           ) : (
             <>
-              Already have an account?{" "}
-              <Link href="/sign-in" className="text-foreground underline-offset-4 hover:underline">
-                Sign in
+              Already a reader?{" "}
+              <Link href="/sign-in" className="text-foreground hover:text-[hsl(var(--signal))]">
+                Sign in →
               </Link>
             </>
           )}
