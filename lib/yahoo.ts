@@ -8,25 +8,22 @@ export type HistoryPoint = {
   c: number; // close
 };
 
-type ChartRange = "1d" | "5d" | "1mo" | "3mo" | "1y" | "5y" | "max";
-type ChartInterval =
-  | "1m"
-  | "5m"
-  | "15m"
-  | "30m"
-  | "60m"
-  | "1d"
-  | "1wk"
-  | "1mo";
+type ChartInterval = "1m" | "5m" | "15m" | "30m" | "60m" | "1d" | "1wk" | "1mo";
 
-const TIMEFRAME_MAP: Record<Timeframe, { range: ChartRange; interval: ChartInterval }> = {
-  "1D": { range: "1d", interval: "5m" },
-  "5D": { range: "5d", interval: "30m" },
-  "1M": { range: "1mo", interval: "1d" },
-  "3M": { range: "3mo", interval: "1d" },
-  "1Y": { range: "1y", interval: "1d" },
-  "5Y": { range: "5y", interval: "1wk" },
-  All: { range: "max", interval: "1mo" },
+function daysAgo(n: number): Date {
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d;
+}
+
+const TIMEFRAME_MAP: Record<Timeframe, { period1: Date; interval: ChartInterval }> = {
+  "1D": { period1: daysAgo(1),   interval: "5m" },
+  "5D": { period1: daysAgo(5),   interval: "30m" },
+  "1M": { period1: daysAgo(30),  interval: "1d" },
+  "3M": { period1: daysAgo(90),  interval: "1d" },
+  "1Y": { period1: daysAgo(365), interval: "1d" },
+  "5Y": { period1: daysAgo(1825), interval: "1wk" },
+  All:  { period1: new Date("1985-01-01"), interval: "1mo" },
 };
 
 export function getChartParams(tf: Timeframe) {
@@ -182,9 +179,9 @@ export async function getHistory(
   symbol: string,
   tf: Timeframe
 ): Promise<HistoryPoint[]> {
-  const { range, interval } = getChartParams(tf);
+  const { period1, interval } = getChartParams(tf);
   const res = await yahooFinance.chart(symbol.toUpperCase(), {
-    range,
+    period1,
     interval,
   });
   const quotes = res.quotes ?? [];
@@ -245,8 +242,8 @@ export async function searchTickers(query: string): Promise<SearchSuggestion[]> 
     )
     .map((q) => ({
       symbol: q.symbol,
-      name: ("longname" in q && q.longname) || ("shortname" in q && q.shortname) || q.symbol,
-      exchange: "exchange" in q ? (q.exchange ?? null) : null,
-      type: "quoteType" in q ? (q.quoteType ?? null) : null,
+      name: String(("longname" in q && q.longname) || ("shortname" in q && q.shortname) || q.symbol),
+      exchange: "exchange" in q && typeof q.exchange === "string" ? q.exchange : null,
+      type: "quoteType" in q && typeof q.quoteType === "string" ? q.quoteType : null,
     }));
 }
