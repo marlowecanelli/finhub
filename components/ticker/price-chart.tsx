@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency, formatPercent } from "@/lib/utils";
 import type { HistoryPoint, Timeframe } from "@/lib/yahoo";
 
 const TIMEFRAMES: Timeframe[] = ["1D", "5D", "1M", "3M", "1Y", "5Y", "All"];
@@ -63,6 +63,15 @@ export function PriceChart({
     return (points[points.length - 1]!.c ?? 0) >= (points[0]!.c ?? 0);
   }, [points]);
 
+  const changeInfo = useMemo(() => {
+    if (!points || points.length < 2) return null;
+    const first = points[0]!.c ?? 0;
+    const last = points[points.length - 1]!.c ?? 0;
+    const change = last - first;
+    const pct = first !== 0 ? (change / first) * 100 : 0;
+    return { change, pct };
+  }, [points]);
+
   const stroke = up ? "hsl(156 100% 60%)" : "hsl(348 95% 65%)";
 
   return (
@@ -75,6 +84,18 @@ export function PriceChart({
           <h2 className="font-display text-xl font-medium tracking-tight">
             Price history
           </h2>
+          {changeInfo && (
+            <span
+              className={cn(
+                "font-mono text-sm font-semibold tabular-nums",
+                up ? "text-emerald-400" : "text-rose-400"
+              )}
+            >
+              {changeInfo.change >= 0 ? "+" : ""}
+              {formatCurrency(changeInfo.change, currency)}{" "}
+              ({formatPercent(changeInfo.pct)})
+            </span>
+          )}
         </div>
         <div className="inline-flex rounded-md border border-border/80 bg-background/50 p-0.5">
           {TIMEFRAMES.map((label) => (
