@@ -1,3 +1,3 @@
-export function UperUassetUtable() {
+export function PerAssetTable() {
   return null;
 }

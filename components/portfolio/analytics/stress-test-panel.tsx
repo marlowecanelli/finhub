@@ -1,3 +1,3 @@
-export function UstressUtestUpanel() {
+export function StressTestPanel() {
   return null;
 }

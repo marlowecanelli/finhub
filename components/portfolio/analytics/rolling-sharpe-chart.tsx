@@ -1,3 +1,3 @@
-export function UrollingUsharpeUchart() {
+export function RollingSharpeChart() {
   return null;
 }

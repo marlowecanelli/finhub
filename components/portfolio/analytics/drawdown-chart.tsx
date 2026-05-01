@@ -1,3 +1,3 @@
-export function UdrawdownUchart() {
+export function DrawdownChart() {
   return null;
 }

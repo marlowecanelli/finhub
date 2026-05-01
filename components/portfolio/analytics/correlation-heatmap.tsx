@@ -1,3 +1,3 @@
-export function UcorrelationUheatmap() {
+export function CorrelationHeatmap() {
   return null;
 }

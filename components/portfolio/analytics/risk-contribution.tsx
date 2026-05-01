@@ -1,3 +1,3 @@
-export function UriskUcontribution() {
+export function RiskContribution() {
   return null;
 }
