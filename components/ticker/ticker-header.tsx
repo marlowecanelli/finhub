@@ -103,12 +103,16 @@ export function TickerHeader({ quote, website }: Props) {
       }
     };
     refresh();
-    const id = setInterval(refresh, 15000);
-    return () => {
-      alive = false;
-      clearInterval(id);
-    };
-  }, [quote.symbol]);
+    // Only poll during market hours — price doesn't change when closed
+    if (quote.marketState === "REGULAR" || quote.marketState === "PRE" || quote.marketState === "POST") {
+      const id = setInterval(refresh, 10000);
+      return () => {
+        alive = false;
+        clearInterval(id);
+      };
+    }
+    return () => { alive = false; };
+  }, [quote.symbol, quote.marketState]);
 
   const up = (live.changePercent ?? 0) >= 0;
   const signalColor = up ? "hsl(var(--signal))" : "hsl(348 95% 65%)";
@@ -166,7 +170,13 @@ export function TickerHeader({ quote, website }: Props) {
                 </motion.span>
               </AnimatePresence>
             </div>
-            <p className="mt-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground/50">
+            <p className="mt-1.5 inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground/50">
+              {live.marketState === "REGULAR" && (
+                <span className="inline-flex items-center gap-1 text-[hsl(var(--signal))]">
+                  <span className="h-1.5 w-1.5 animate-[signal-pulse_2.4s_ease-in-out_infinite] rounded-full bg-[hsl(var(--signal))] shadow-[0_0_6px_hsl(var(--signal))]" />
+                  Live ·
+                </span>
+              )}
               Updated {updatedAt}
             </p>
           </div>
