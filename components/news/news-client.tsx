@@ -5,7 +5,7 @@ import { Newspaper, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BreakingSection } from "./breaking-section";
 import { NewsCard } from "./news-card";
-import { NewsFilters, type NewsFilterState } from "./news-filters";
+import { NewsFilters, DEFAULT_FILTERS, type NewsFilterState } from "./news-filters";
 import { NewArticlesToast } from "./new-articles-toast";
 import { BreakingSkeleton, NewsCardSkeleton } from "./skeletons";
 import type { NewsArticle } from "@/lib/news";
@@ -28,11 +28,7 @@ export function NewsClient({
   const [pendingArticles, setPendingArticles] = React.useState<NewsArticle[]>([]);
   const [refreshing, setRefreshing] = React.useState(false);
   const [fetchedAt, setFetchedAt] = React.useState<string | null>(initialFetchedAt);
-  const [filters, setFilters] = React.useState<NewsFilterState>({
-    ticker: "",
-    sectors: [],
-    impact: "all",
-  });
+  const [filters, setFilters] = React.useState<NewsFilterState>(DEFAULT_FILTERS);
   const [visibleCount, setVisibleCount] = React.useState(PAGE_SIZE);
   const sentinelRef = React.useRef<HTMLDivElement>(null);
 
@@ -116,27 +112,70 @@ export function NewsClient({
   }
 
   // ---------- Derived ----------
-  const sectorOptions = React.useMemo(
-    () =>
-      Array.from(
-        new Set(articles.flatMap((a) => a.sectors).filter(Boolean))
-      ).sort(),
+  const tickerOptions = React.useMemo(
+    () => Array.from(new Set(articles.flatMap((a) => a.tickers))).sort(),
     [articles]
   );
 
+  const sectorOptions = React.useMemo(
+    () => Array.from(new Set(articles.flatMap((a) => a.sectors).filter(Boolean))).sort(),
+    [articles]
+  );
+
+  const sourceOptions = React.useMemo(
+    () => Array.from(new Set(articles.map((a) => a.source).filter(Boolean))).sort(),
+    [articles]
+  );
+
+  const TIME_RANGE_MS: Record<string, number> = {
+    "1h": 3_600_000,
+    "6h": 21_600_000,
+    "24h": 86_400_000,
+    "7d": 604_800_000,
+  };
+
   const filtered = React.useMemo(() => {
-    return articles.filter((a) => {
-      if (filters.impact === "high" && a.impact === "low") return false;
-      if (filters.impact === "breaking" && a.impact !== "breaking") return false;
-      if (filters.ticker.trim()) {
-        const t = filters.ticker.trim().toUpperCase();
-        if (!a.tickers.includes(t)) return false;
+    let result = articles.filter((a) => {
+      // keyword search
+      if (filters.search.trim()) {
+        const q = filters.search.trim().toLowerCase();
+        const haystack = `${a.title} ${a.description ?? ""} ${a.matchedKeywords.join(" ")}`.toLowerCase();
+        if (!haystack.includes(q)) return false;
       }
+      // tickers (multi)
+      if (filters.tickers.length > 0) {
+        if (!filters.tickers.some((t) => a.tickers.includes(t))) return false;
+      }
+      // sectors
       if (filters.sectors.length > 0) {
         if (!a.sectors.some((s) => filters.sectors.includes(s))) return false;
       }
+      // sources
+      if (filters.sources.length > 0) {
+        if (!filters.sources.includes(a.source)) return false;
+      }
+      // time range
+      if (filters.timeRange !== "all") {
+        const cutoff = TIME_RANGE_MS[filters.timeRange];
+        if (cutoff && Date.now() - new Date(a.publishedAt).getTime() > cutoff) return false;
+      }
+      // impact
+      if (filters.impact === "high" && a.impact === "low") return false;
+      if (filters.impact === "breaking" && a.impact !== "breaking") return false;
       return true;
     });
+
+    // sort
+    if (filters.sort === "oldest") {
+      result = [...result].sort(
+        (a, b) => new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime()
+      );
+    } else if (filters.sort === "impact") {
+      result = [...result].sort((a, b) => b.impactScore - a.impactScore);
+    }
+    // "newest" is already the default order from the server
+
+    return result;
   }, [articles, filters]);
 
   const breaking = React.useMemo(
@@ -214,7 +253,9 @@ export function NewsClient({
           <NewsFilters
             value={filters}
             onChange={setFilters}
+            tickerOptions={tickerOptions}
             sectorOptions={sectorOptions}
+            sourceOptions={sourceOptions}
             totalCount={articles.length}
             filteredCount={filtered.length}
           />
