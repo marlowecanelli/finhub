@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Coins, Ruler, Target } from "lucide-react";
+import { ArrowRight, Coins, FlaskConical, Landmark, Ruler, Target, TrendingUp } from "lucide-react";
 
 const CALCULATORS = [
   {
@@ -26,6 +26,38 @@ const CALCULATORS = [
     icon: Target,
     accent: "from-amber-500/30 to-transparent text-amber-500 ring-amber-500/30",
   },
+  {
+    href: "/calculators/options",
+    title: "Options pricing",
+    description:
+      "Black-Scholes call & put prices, all Greeks, and payoff chart.",
+    icon: FlaskConical,
+    accent: "from-violet-500/30 to-transparent text-violet-400 ring-violet-500/30",
+  },
+  {
+    href: "/calculators/compound-interest",
+    title: "Compound interest",
+    description:
+      "Project final balance with regular contributions and compounding.",
+    icon: TrendingUp,
+    accent: "from-[#10b981]/30 to-transparent text-[#10b981] ring-[#10b981]/30",
+  },
+  {
+    href: "/calculators/loan",
+    title: "Loan / mortgage",
+    description:
+      "Monthly payment, total interest, and amortization schedule.",
+    icon: Landmark,
+    accent: "from-sky-500/30 to-transparent text-sky-400 ring-sky-500/30",
+  },
+  {
+    href: "/calculators/break-even",
+    title: "Break-even",
+    description:
+      "Units and revenue needed to cover fixed and variable costs.",
+    icon: Target,
+    accent: "from-amber-500/30 to-transparent text-amber-500 ring-amber-500/30",
+  },
 ] as const;
 
 export default function CalculatorsIndex() {
@@ -40,7 +72,7 @@ export default function CalculatorsIndex() {
         </h1>
       </header>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-4">
         {CALCULATORS.map(({ href, title, description, icon: Icon, accent }) => (
           <Link
             key={href}

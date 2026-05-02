@@ -172,6 +172,203 @@ export function computePosition(i: PositionInputs): PositionResult {
   };
 }
 
+// ---------- Compound interest ----------
+
+export type CompoundInputs = {
+  principal: number;
+  monthlyContrib: number;
+  annualRate: number; // as percent, e.g. 8 for 8%
+  years: number;
+  compoundFreq: "monthly" | "quarterly" | "annually";
+};
+
+export type CompoundRow = {
+  year: number;
+  balance: number;
+  contributions: number;
+  interest: number;
+};
+
+export function projectCompound(i: CompoundInputs): CompoundRow[] {
+  const periodsPerYear =
+    i.compoundFreq === "monthly" ? 12 : i.compoundFreq === "quarterly" ? 4 : 1;
+  const ratePerPeriod = i.annualRate / 100 / periodsPerYear;
+  const periodsPerMonth = periodsPerYear / 12; // fractional if quarterly/annually
+
+  const rows: CompoundRow[] = [];
+  let balance = i.principal;
+  let totalContributions = i.principal;
+
+  // We simulate month by month but only compound at the right frequency
+  // Instead, simulate period by period
+  const totalPeriods = periodsPerYear * Math.max(0, Math.round(i.years));
+  const monthsPerPeriod = 12 / periodsPerYear;
+
+  for (let period = 1; period <= totalPeriods; period++) {
+    // Add monthly contributions for each month in this period
+    const contribThisPeriod = i.monthlyContrib * monthsPerPeriod;
+    balance += contribThisPeriod;
+    totalContributions += contribThisPeriod;
+
+    // Apply interest
+    balance *= 1 + ratePerPeriod;
+
+    // Record at year boundaries
+    if (period % periodsPerYear === 0) {
+      const year = period / periodsPerYear;
+      rows.push({
+        year,
+        balance,
+        contributions: totalContributions,
+        interest: balance - totalContributions,
+      });
+    }
+  }
+
+  return rows;
+}
+
+// ---------- Loan amortization ----------
+
+export type LoanInputs = {
+  principal: number;
+  annualRate: number; // as percent
+  termYears: number;
+  extraMonthly: number;
+};
+
+export type LoanScheduleRow = {
+  month: number;
+  balance: number;
+  principal: number;
+  interest: number;
+};
+
+export type LoanResult = {
+  monthlyPayment: number;
+  totalPaid: number;
+  totalInterest: number;
+  payoffMonths: number;
+  schedule: LoanScheduleRow[];
+};
+
+export function computeLoan(i: LoanInputs): LoanResult {
+  const principal = Math.max(0, i.principal);
+  const monthlyRate = i.annualRate / 100 / 12;
+  const n = Math.round(i.termYears * 12);
+  const extra = Math.max(0, i.extraMonthly);
+
+  if (principal <= 0 || n <= 0 || i.annualRate < 0) {
+    return {
+      monthlyPayment: 0,
+      totalPaid: 0,
+      totalInterest: 0,
+      payoffMonths: 0,
+      schedule: [],
+    };
+  }
+
+  // Standard monthly payment formula
+  let monthlyPayment: number;
+  if (monthlyRate === 0) {
+    monthlyPayment = principal / n;
+  } else {
+    const factor = Math.pow(1 + monthlyRate, n);
+    monthlyPayment = (principal * monthlyRate * factor) / (factor - 1);
+  }
+
+  const schedule: LoanScheduleRow[] = [];
+  let balance = principal;
+  let month = 0;
+  let totalPaid = 0;
+
+  while (balance > 0.005 && month < n) {
+    month++;
+    const interestThisMonth = balance * monthlyRate;
+    const payment = Math.min(balance + interestThisMonth, monthlyPayment + extra);
+    const principalThisMonth = payment - interestThisMonth;
+    balance = Math.max(0, balance - principalThisMonth);
+    totalPaid += payment;
+
+    // Include first 36 months + every 12th month after that
+    if (month <= 36 || month % 12 === 0) {
+      schedule.push({
+        month,
+        balance,
+        principal: principalThisMonth,
+        interest: interestThisMonth,
+      });
+    }
+  }
+
+  return {
+    monthlyPayment,
+    totalPaid,
+    totalInterest: totalPaid - principal,
+    payoffMonths: month,
+    schedule,
+  };
+}
+
+// ---------- Break-even ----------
+
+export type BreakEvenInputs = {
+  fixedCosts: number;
+  variableCostPerUnit: number;
+  pricePerUnit: number;
+  currentUnits?: number;
+};
+
+export type BreakEvenResult = {
+  bepUnits: number;
+  bepRevenue: number;
+  contributionMargin: number; // per unit
+  contributionMarginRatio: number; // 0–1
+  marginOfSafety?: number;
+  marginOfSafetyPct?: number;
+  valid: boolean;
+};
+
+export function computeBreakEven(i: BreakEvenInputs): BreakEvenResult {
+  const contributionMargin = i.pricePerUnit - i.variableCostPerUnit;
+  const valid =
+    contributionMargin > 0 &&
+    i.fixedCosts >= 0 &&
+    i.pricePerUnit > 0 &&
+    Number.isFinite(contributionMargin);
+
+  if (!valid) {
+    return {
+      bepUnits: 0,
+      bepRevenue: 0,
+      contributionMargin,
+      contributionMarginRatio: i.pricePerUnit > 0 ? contributionMargin / i.pricePerUnit : 0,
+      valid: false,
+    };
+  }
+
+  const bepUnits = i.fixedCosts / contributionMargin;
+  const bepRevenue = bepUnits * i.pricePerUnit;
+  const contributionMarginRatio = contributionMargin / i.pricePerUnit;
+
+  const result: BreakEvenResult = {
+    bepUnits,
+    bepRevenue,
+    contributionMargin,
+    contributionMarginRatio,
+    valid: true,
+  };
+
+  if (i.currentUnits != null && i.currentUnits > 0) {
+    const currentRevenue = i.currentUnits * i.pricePerUnit;
+    result.marginOfSafety = currentRevenue - bepRevenue;
+    result.marginOfSafetyPct =
+      currentRevenue > 0 ? result.marginOfSafety / currentRevenue : 0;
+  }
+
+  return result;
+}
+
 // ---------- Goal projection ----------
 
 export type Goal = {
