@@ -93,6 +93,9 @@ export default function LandingPage() {
 
         <div className="flex items-center gap-2">
           <Button asChild variant="ghost" size="sm" className="text-foreground/70 hover:text-foreground">
+            <Link href="/hindsight">Hindsight</Link>
+          </Button>
+          <Button asChild variant="ghost" size="sm" className="text-foreground/70 hover:text-foreground">
             <Link href="/sign-in">Sign in</Link>
           </Button>
           <Button asChild size="sm" className="sweep">
