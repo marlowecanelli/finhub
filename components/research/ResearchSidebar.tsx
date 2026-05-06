@@ -6,7 +6,7 @@ import { useState } from "react";
 import {
   Eye, TrendingDown, BarChart2, RefreshCw, Calendar,
   Zap, Building2, Moon, CalendarDays, Landmark, Star, Filter,
-  ChevronLeft, ChevronRight, FlaskConical,
+  ChevronLeft, ChevronRight, FlaskConical, LayoutDashboard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -123,6 +123,18 @@ export function ResearchSidebar() {
           );
         })}
       </nav>
+
+      {/* Back to FinHub */}
+      <div className="border-t px-3 py-2.5" style={{ borderColor: "#1E2130" }}>
+        <Link
+          href="/dashboard"
+          title={collapsed ? "Back to FinHub" : undefined}
+          className="flex items-center gap-3 rounded-sm px-2 py-2 text-[11px] font-medium text-[#717A94] hover:text-[#C8D0E7] transition-colors hover:bg-[#1E2130]"
+        >
+          <LayoutDashboard size={14} className="flex-shrink-0" />
+          {!collapsed && <span className="truncate">Back to FinHub</span>}
+        </Link>
+      </div>
 
       {/* Collapse toggle */}
       <div className="border-t p-2" style={{ borderColor: "#1E2130" }}>
