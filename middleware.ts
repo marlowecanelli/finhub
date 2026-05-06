@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const PROTECTED_PREFIXES = [
   "/dashboard",
+  "/calendar",
   "/screener",
   "/portfolio",
   "/builder",
@@ -12,6 +13,7 @@ const PROTECTED_PREFIXES = [
   "/ticker",
   "/watchlist",
   "/settings",
+  "/research",
 ];
 
 const AUTH_ROUTES = ["/sign-in", "/sign-up"];

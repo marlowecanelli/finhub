@@ -8,6 +8,8 @@ import {
   Star,
   CalendarDays,
   History,
+  Trophy,
+  FlaskConical,
   type LucideIcon,
 } from "lucide-react";
 
@@ -26,5 +28,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { label: "Builder", href: "/builder", icon: Hammer },
   { label: "Calculators", href: "/calculators", icon: Calculator },
   { label: "Hindsight", href: "/hindsight", icon: History },
+  { label: "Research", href: "/research", icon: FlaskConical },
   { label: "News", href: "/news", icon: Newspaper },
+  { label: "Achievements", href: "/achievements", icon: Trophy },
 ] as const;
