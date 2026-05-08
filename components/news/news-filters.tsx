@@ -137,24 +137,15 @@ export function NewsFilters({
         />
         <div>
           <p className="mb-1.5 text-xs font-medium text-muted-foreground">Impact</p>
-          <div className="flex flex-col gap-0.5 rounded-lg border border-border/60 bg-background/50 p-0.5">
+          <select
+            value={value.impact}
+            onChange={(e) => onChange({ ...value, impact: e.target.value as NewsFilterState["impact"] })}
+            className="h-9 w-full rounded-lg border border-input bg-background/50 px-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          >
             {IMPACTS.map((i) => (
-              <button
-                key={i.key}
-                type="button"
-                onClick={() => onChange({ ...value, impact: i.key })}
-                className={cn(
-                  "rounded-md px-2.5 py-1 text-left text-xs font-medium transition-colors",
-                  value.impact === i.key
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-                aria-pressed={value.impact === i.key}
-              >
-                {i.label}
-              </button>
+              <option key={i.key} value={i.key}>{i.label}</option>
             ))}
-          </div>
+          </select>
         </div>
       </div>
 

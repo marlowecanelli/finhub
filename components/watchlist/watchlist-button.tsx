@@ -5,6 +5,7 @@ import { Loader2, Star } from "lucide-react";
 import { Button, type ButtonProps } from "@/components/ui/button";
 import { useToast } from "@/components/toast/toast-provider";
 import { createClient } from "@/lib/supabase";
+import { emitEvent } from "@/lib/achievements/client";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -88,6 +89,7 @@ export function WatchlistButton({ ticker, size = "sm" }: Props) {
         if (error) throw error;
         setWatching(true);
         t.success("Added", `${sym} added to watchlist`);
+        void emitEvent("watchlist_added", { ticker: sym });
       }
     } catch (err) {
       t.error("Couldn't update watchlist", err instanceof Error ? err.message : "Try again");

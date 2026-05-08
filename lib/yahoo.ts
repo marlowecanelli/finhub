@@ -17,11 +17,11 @@ function daysAgo(n: number): Date {
 }
 
 const TIMEFRAME_MAP: Record<Timeframe, { period1: Date; interval: ChartInterval }> = {
-  "1D": { period1: daysAgo(1),   interval: "5m" },
-  "5D": { period1: daysAgo(5),   interval: "30m" },
-  "1M": { period1: daysAgo(30),  interval: "1d" },
-  "3M": { period1: daysAgo(90),  interval: "1d" },
-  "1Y": { period1: daysAgo(365), interval: "1d" },
+  "1D": { period1: daysAgo(1),    interval: "5m" },
+  "5D": { period1: daysAgo(5),    interval: "30m" },
+  "1M": { period1: daysAgo(30),   interval: "1d" },
+  "3M": { period1: daysAgo(90),   interval: "1d" },
+  "1Y": { period1: daysAgo(365),  interval: "1d" },
   "5Y": { period1: daysAgo(1825), interval: "1wk" },
   All:  { period1: new Date("1985-01-01"), interval: "1mo" },
 };
@@ -42,6 +42,19 @@ export type QuoteSnapshot = {
   marketState: string | null;
 };
 
+export type AnalystRatings = {
+  recommendationKey: string | null; // "buy" | "hold" | "sell" | "strong_buy" | "strong_sell"
+  numberOfAnalysts: number | null;
+  targetMeanPrice: number | null;
+  targetHighPrice: number | null;
+  targetLowPrice: number | null;
+  strongBuy: number | null;
+  buy: number | null;
+  hold: number | null;
+  sell: number | null;
+  strongSell: number | null;
+};
+
 export type TickerSummary = {
   quote: QuoteSnapshot;
   stats: {
@@ -55,6 +68,10 @@ export type TickerSummary = {
     beta: number | null;
     volume: number | null;
     avgVolume: number | null;
+    revenueTTM: number | null;
+    profitMargin: number | null;
+    returnOnEquity: number | null;
+    debtToEquity: number | null;
   };
   profile: {
     longName: string | null;
@@ -65,13 +82,19 @@ export type TickerSummary = {
     employees: number | null;
     website: string | null;
     headquarters: string | null;
+    exchange: string | null;
+    currency: string | null;
+    fiscalYearEnd: string | null;
   };
   financialsQuarterly: Array<{
     quarter: string;
     revenue: number | null;
     netIncome: number | null;
+    grossProfit: number | null;
+    eps: number | null;
     profitMargin: number | null;
   }>;
+  analystRatings: AnalystRatings | null;
 };
 
 export async function getTickerSummary(symbol: string): Promise<TickerSummary> {
@@ -85,6 +108,7 @@ export async function getTickerSummary(symbol: string): Promise<TickerSummary> {
       "assetProfile",
       "incomeStatementHistoryQuarterly",
       "financialData",
+      "recommendationTrend",
     ],
   });
 
@@ -94,6 +118,7 @@ export async function getTickerSummary(symbol: string): Promise<TickerSummary> {
   const profile = summary.assetProfile;
   const fin = summary.financialData;
   const income = summary.incomeStatementHistoryQuarterly;
+  const recTrend = summary.recommendationTrend;
 
   if (!price?.regularMarketPrice && !detail?.regularMarketOpen) {
     throw new Error(`No data for ${sym}`);
@@ -101,8 +126,7 @@ export async function getTickerSummary(symbol: string): Promise<TickerSummary> {
 
   const current = price?.regularMarketPrice ?? null;
   const prev = price?.regularMarketPreviousClose ?? detail?.previousClose ?? null;
-  const change =
-    current != null && prev != null ? current - prev : null;
+  const change = current != null && prev != null ? current - prev : null;
   const changePct =
     current != null && prev && prev !== 0 ? ((current - prev) / prev) * 100 : null;
 
@@ -110,8 +134,10 @@ export async function getTickerSummary(symbol: string): Promise<TickerSummary> {
     .filter(Boolean)
     .join(", ");
 
-  const ceo = profile?.companyOfficers?.find((o) => /ceo|chief executive/i.test(o.title ?? ""))
-    ?.name ?? profile?.companyOfficers?.[0]?.name ?? null;
+  const ceo =
+    profile?.companyOfficers?.find((o) => /ceo|chief executive/i.test(o.title ?? ""))?.name ??
+    profile?.companyOfficers?.[0]?.name ??
+    null;
 
   const quarterlyRaw = income?.incomeStatementHistory ?? [];
   const financialsQuarterly = quarterlyRaw
@@ -120,6 +146,8 @@ export async function getTickerSummary(symbol: string): Promise<TickerSummary> {
     .map((q) => {
       const revenue = q.totalRevenue ?? null;
       const netIncome = q.netIncome ?? null;
+      const grossProfit = q.grossProfit ?? null;
+      const eps = (q as unknown as Record<string, unknown>).basicEPS as number | null ?? null;
       const margin =
         revenue && netIncome != null && revenue !== 0
           ? (netIncome / revenue) * 100
@@ -131,9 +159,33 @@ export async function getTickerSummary(symbol: string): Promise<TickerSummary> {
           : "",
         revenue,
         netIncome,
+        grossProfit,
+        eps,
         profitMargin: margin,
       };
     });
+
+  // Analyst ratings from recommendationTrend (most recent period)
+  let analystRatings: AnalystRatings | null = null;
+  const trends = recTrend?.trend ?? [];
+  const currentTrend = trends.find((t) => t.period === "0m") ?? trends[0];
+  const hasAnalysts =
+    fin?.numberOfAnalystOpinions != null && fin.numberOfAnalystOpinions > 0;
+
+  if (hasAnalysts || currentTrend) {
+    analystRatings = {
+      recommendationKey: fin?.recommendationKey ?? null,
+      numberOfAnalysts: fin?.numberOfAnalystOpinions ?? null,
+      targetMeanPrice: fin?.targetMeanPrice ?? null,
+      targetHighPrice: fin?.targetHighPrice ?? null,
+      targetLowPrice: fin?.targetLowPrice ?? null,
+      strongBuy: currentTrend?.strongBuy ?? null,
+      buy: currentTrend?.buy ?? null,
+      hold: currentTrend?.hold ?? null,
+      sell: currentTrend?.sell ?? null,
+      strongSell: currentTrend?.strongSell ?? null,
+    };
+  }
 
   return {
     quote: {
@@ -158,6 +210,10 @@ export async function getTickerSummary(symbol: string): Promise<TickerSummary> {
       beta: stats?.beta ?? detail?.beta ?? null,
       volume: detail?.volume ?? price?.regularMarketVolume ?? null,
       avgVolume: detail?.averageVolume ?? null,
+      revenueTTM: fin?.totalRevenue ?? null,
+      profitMargin: fin?.profitMargins ?? null,
+      returnOnEquity: fin?.returnOnEquity ?? null,
+      debtToEquity: fin?.debtToEquity ?? null,
     },
     profile: {
       longName: price?.longName ?? null,
@@ -168,11 +224,13 @@ export async function getTickerSummary(symbol: string): Promise<TickerSummary> {
       employees: profile?.fullTimeEmployees ?? null,
       website: profile?.website ?? null,
       headquarters: address || null,
+      exchange: price?.exchangeName ?? null,
+      currency: price?.currency ?? null,
+      fiscalYearEnd: null, // not reliably available from Yahoo modules
     },
     financialsQuarterly,
+    analystRatings,
   };
-
-  void fin;
 }
 
 export async function getHistory(
@@ -216,7 +274,9 @@ export async function getTickerNews(
     publisher: n.publisher ?? null,
     link: n.link,
     providerPublishTime: n.providerPublishTime
-      ? Math.floor(new Date(n.providerPublishTime as unknown as string | Date).getTime() / 1000)
+      ? Math.floor(
+          new Date(n.providerPublishTime as unknown as string | Date).getTime() / 1000
+        )
       : null,
   }));
 }
@@ -242,8 +302,16 @@ export async function searchTickers(query: string): Promise<SearchSuggestion[]> 
     )
     .map((q) => ({
       symbol: q.symbol,
-      name: String(("longname" in q && q.longname) || ("shortname" in q && q.shortname) || q.symbol),
-      exchange: "exchange" in q && typeof q.exchange === "string" ? q.exchange : null,
-      type: "quoteType" in q && typeof q.quoteType === "string" ? q.quoteType : null,
+      name: String(
+        ("longname" in q && q.longname) ||
+          ("shortname" in q && q.shortname) ||
+          q.symbol
+      ),
+      exchange:
+        "exchange" in q && typeof q.exchange === "string" ? q.exchange : null,
+      type:
+        "quoteType" in q && typeof q.quoteType === "string"
+          ? q.quoteType
+          : null,
     }));
 }

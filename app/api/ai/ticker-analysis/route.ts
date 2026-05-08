@@ -157,7 +157,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: message }, { status: 404 });
   }
 
-  const anthropic = getAnthropic();
+  let anthropic;
+  try {
+    anthropic = getAnthropic();
+  } catch {
+    return NextResponse.json({ error: "ANTHROPIC_API_KEY not configured" }, { status: 503 });
+  }
 
   const system = `You are a dispassionate equity research assistant. Produce balanced, evidence-based analysis.
 Never give outright financial advice; frame as educational analysis. Use the provided context only — do not invent specific numbers.
@@ -177,13 +182,19 @@ Return JSON with this exact shape:
 Context (JSON):
 ${JSON.stringify(context, null, 2)}`;
 
-  const res = await anthropic.messages.create({
-    model: CLAUDE_MODEL,
-    max_tokens: 900,
-    temperature: 0.3,
-    system,
-    messages: [{ role: "user", content: userPrompt }],
-  });
+  let res;
+  try {
+    res = await anthropic.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 900,
+      temperature: 0.3,
+      system,
+      messages: [{ role: "user", content: userPrompt }],
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Anthropic API error";
+    return NextResponse.json({ error: message }, { status: 502 });
+  }
 
   const text = res.content
     .filter((b): b is Extract<typeof b, { type: "text" }> => b.type === "text")

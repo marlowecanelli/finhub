@@ -33,6 +33,7 @@ import { OptionCard } from "./option-card";
 import { RiskSlider } from "./risk-slider";
 import { StepShell } from "./step-shell";
 import { BuilderResults } from "./results";
+import { emitEvent } from "@/lib/achievements/client";
 
 const STORAGE_KEY = "finhub-builder-answers";
 const TOTAL_STEPS = 7;
@@ -129,6 +130,7 @@ export function BuilderWizard() {
       const data = await r.json();
       if (!r.ok) throw new Error(data.error ?? "Failed to generate");
       setRecommendation(data as BuilderRecommendation);
+      void emitEvent("ai_query_sent", { surface: "builder" });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to generate");
     } finally {

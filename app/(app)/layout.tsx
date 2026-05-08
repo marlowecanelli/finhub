@@ -3,6 +3,7 @@ import { TopBar } from "@/components/layout/top-bar";
 import { PageTransition } from "@/components/layout/page-transition";
 import { Footer } from "@/components/layout/footer";
 import { MarqueeTicker } from "@/components/marquee-ticker";
+import { AchievementToastHost } from "@/components/achievements/AchievementToastHost";
 import { createServerSupabase } from "@/lib/supabase-server";
 
 async function getUser() {
@@ -57,6 +58,7 @@ export default async function AppLayout({
         </main>
         <Footer />
       </div>
+      <AchievementToastHost />
     </div>
   );
 }

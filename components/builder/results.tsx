@@ -20,6 +20,7 @@ import { createClient } from "@/lib/supabase";
 import type { LiveQuote } from "@/lib/portfolio";
 import type { BuilderAnswers, BuilderRecommendation, Pick } from "@/lib/builder";
 import { AllocationPie } from "./allocation-pie";
+import { AnalyticsDashboard } from "@/components/portfolio/analytics/dashboard";
 import { cn } from "@/lib/utils";
 
 type SaveState =
@@ -215,6 +216,11 @@ export function BuilderResults({
           accent="amber"
         />
       )}
+
+      <AnalyticsDashboard
+        title="Projected Risk & Performance"
+        positions={allPicks.map((p) => ({ symbol: p.ticker, value: p.allocation_percent }))}
+      />
 
       <Disclaimer />
     </motion.div>

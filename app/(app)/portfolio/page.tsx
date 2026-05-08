@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { createServerSupabase } from "@/lib/supabase-server";
 import { PortfolioClient } from "@/components/portfolio/portfolio-client";
 import type { Holding, Portfolio } from "@/lib/portfolio";
+import { recordEvent } from "@/lib/achievements/engine";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -44,6 +45,11 @@ async function loadPortfolio(): Promise<
       .single<Portfolio>();
     if (insErr) return { kind: "error", message: insErr.message };
     portfolio = created;
+    try {
+      await recordEvent(user.id, "portfolio_created", { portfolioId: portfolio.id });
+    } catch {
+      // Never block portfolio creation on the achievement engine.
+    }
   }
 
   const { data: holdings, error: hErr } = await supabase

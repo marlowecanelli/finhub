@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ExternalLink, Flame, Sparkles, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { NewsArticle } from "@/lib/news";
+import { emitEvent } from "@/lib/achievements/client";
 
 type Props = { article: NewsArticle; variant?: "default" | "breaking" };
 
@@ -85,6 +86,7 @@ export function NewsCard({ article, variant = "default" }: Props) {
             href={article.url}
             target="_blank"
             rel="noreferrer"
+            onClick={() => void emitEvent("news_read", { articleId: article.id })}
             className="group block"
           >
             <h3 className="text-base font-semibold leading-snug text-foreground transition-colors group-hover:text-primary md:text-lg">

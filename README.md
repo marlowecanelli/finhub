@@ -48,6 +48,7 @@ Create a `.env.local` at the project root:
 | `NEWSAPI_KEY`                    |    ➖    | [newsapi.org](https://newsapi.org)  · enables `/news`                    |
 | `FINNHUB_API_KEY`                |    ➖    | [finnhub.io](https://finnhub.io) · alternative news provider             |
 | `NEXT_PUBLIC_SITE_URL`           |    ➖    | Production URL (e.g. `https://finhub.app`) for SEO + OG tags             |
+| `CRON_SECRET`                    |    ➖    | Long random string. Required in production for `/api/cron/*` auth        |
 
 The service role key is used server-side for AI cache writes (`ai_analyses_cache`, `news_summaries_cache`, `screener_snapshots`) and to power the **delete-account** flow at `/settings`. Without it, AI features still work but won't cache across requests, and account deletion will return a friendly error.
 
@@ -340,6 +341,64 @@ Any Next.js-compatible host works. On **Vercel**:
 5. Ship it.
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for project conventions and the demo recording flow in [`docs/demo-script.md`](docs/demo-script.md).
+
+---
+
+## Home Calendar (`/calendar`)
+
+A unified financial calendar aggregating earnings, dividends, FOMC and macro
+releases, IPOs, stock splits, options expirations, market holidays, conferences,
+crypto events, treasury auctions, lock-up expirations, and personal reminders.
+
+**Migration** — apply [`supabase/migrations/0007_calendar.sql`](supabase/migrations/0007_calendar.sql).
+Creates `calendar_events`, `user_calendar_events`, `user_calendar_settings`, and
+`calendar_briefs` with appropriate RLS (events public-read; user tables owner-only).
+
+**Data sources** (each isolated in `lib/calendar/sources/` or `lib/calendar/seeds/`)
+- **Earnings + dividends** — `yahoo-finance2` `quoteSummary.calendarEvents` for the tracked universe (~75 large/mega caps). Easy to extend in `lib/calendar/sources/yahoo.ts`.
+- **Options expirations** — deterministically generated (3rd Friday + every Friday) for the current and next year. Quarterly OPEX flagged as triple witching.
+- **Market holidays** — hardcoded NYSE/Nasdaq calendar through 2028 in `lib/calendar/seeds/holidays.ts`.
+- **Economic releases** — curated US macro calendar (CPI, PCE, NFP, FOMC, GDP, ISM, retail sales, …) in `lib/calendar/seeds/economic.ts`. **Update every 6–12 months.**
+- **Conferences** — top investor days, GTC, WWDC, CES, Jackson Hole, Berkshire AM, etc. in `lib/calendar/seeds/conferences.ts`.
+- **Crypto** — halving, ETH upgrades, monthly token unlocks for top assets in `lib/calendar/seeds/crypto.ts`.
+- **Treasury auctions** — live from `api.fiscaldata.treasury.gov` (free, no key).
+- **IPOs** — recent S-1 filings via SEC EDGAR full-text search (best-effort).
+- **Personal events** — user-created via the "Add event" button, stored in `user_calendar_events`.
+
+**Cron**
+- `/api/cron/refresh-calendar` — every 6 hours, refreshes all sources via `Promise.allSettled`. One source failing never poisons the others. Returns per-source counts and errors for observability.
+- `/api/cron/calendar-briefs` — weekdays at 11:00 UTC (06:00 ET), pre-warms the per-user AI brief cache for users with email digest enabled.
+
+Both are wired in [`vercel.json`](vercel.json). Set `CRON_SECRET` in production — Vercel passes it as a bearer token.
+
+**API**
+- `GET /api/calendar/events?from=…&to=…&types=…&importance=…&watchlistOnly=…&search=…` — returns merged public + user events, sorted, max 2000.
+- `POST /api/calendar/events` — create personal event (auth required).
+- `DELETE /api/calendar/events/[id]` — delete personal event (auth + ownership required).
+- `GET /api/calendar/settings`, `PATCH /api/calendar/settings` — per-user settings (auto-creates row on first read).
+- `GET /api/calendar/feed/[token].ics` — public iCalendar feed using opaque token (not user ID — rotatable, doesn't leak PII to Google/Apple Calendar).
+- `GET /api/calendar/ics/[id].ics` — single-event download.
+- `GET /api/ai/calendar-brief` — Claude-powered "What to watch today" 4-paragraph brief, cached per-user-per-day in `calendar_briefs`. Add `?refresh=1` to invalidate.
+- `GET /api/ai/event-brief/[id]` — Claude 3-bullet "Why does this matter?" for any event, cached on the event row.
+
+**Views**
+- **Month** — full calendar grid; today gets a glowing signal-green ring; cells with critical events get a subtle gradient; max 3 chips per cell + "+N more"; click a day to open the side drawer.
+- **Week** — 7-day grid sliced into Pre-market / Market hours / After hours / All day bands. Earnings BMO/AMC sit in the right band automatically based on Yahoo's reported time.
+- **Agenda** — chronological grouped list with sticky day headers; the mobile default and the cleanest dense-list view.
+- **Heatmap** — GitHub-style year-at-a-glance; intensity reflects total importance weight per day; great for spotting earnings-season clustering.
+
+**AI**
+All AI calls use `claude-sonnet-4-6` with prompt caching on the system prompt (saves ~80% on the daily-brief cron). Briefs are cached per-user-per-day; per-event explanations are cached on the event row.
+
+**Dashboard integration**
+- `<TodayEventsStripe />` — horizontal pill bar of today's medium+ importance events at the top of `/dashboard`.
+- `<ThisWeekWidget />` — compact 7-day glance with type-color dots; lives below the market overview.
+
+**Out of scope for v1** (intentionally deferred)
+- Implied move from ATM straddle (requires options chain math; field exists in metadata for later).
+- LLM-based per-event importance scoring (heuristics in place; LLM rescore would be expensive).
+- Web push notifications (significant infra: VAPID keys, service worker, subscription store).
+- Live earnings results streaming (decorative live-indicator dot only).
 
 ---
 

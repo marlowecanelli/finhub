@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { Check, ChevronDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -15,15 +16,43 @@ type Props = {
 export function MultiSelect({ label, placeholder = "Any", options, value, onChange }: Props) {
   const [open, setOpen] = React.useState(false);
   const [filter, setFilter] = React.useState("");
-  const ref = React.useRef<HTMLDivElement>(null);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
+  const rootRef = React.useRef<HTMLDivElement>(null);
+  const [rect, setRect] = React.useState<DOMRect | null>(null);
+  const [mounted, setMounted] = React.useState(false);
 
+  React.useEffect(() => { setMounted(true); }, []);
+
+  // Recompute anchor position whenever dropdown opens or window resizes/scrolls
   React.useEffect(() => {
+    if (!open) return;
+    function update() {
+      if (triggerRef.current) setRect(triggerRef.current.getBoundingClientRect());
+    }
+    update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
+  }, [open]);
+
+  // Close on outside click
+  React.useEffect(() => {
+    if (!open) return;
     function onClick(e: MouseEvent) {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+      if (
+        !rootRef.current?.contains(e.target as Node) &&
+        !triggerRef.current?.contains(e.target as Node)
+      ) {
+        setOpen(false);
+        setFilter("");
+      }
     }
     window.addEventListener("mousedown", onClick);
     return () => window.removeEventListener("mousedown", onClick);
-  }, []);
+  }, [open]);
 
   function toggle(v: string) {
     if (value.includes(v)) onChange(value.filter((x) => x !== v));
@@ -41,10 +70,63 @@ export function MultiSelect({ label, placeholder = "Any", options, value, onChan
         ? value.join(", ")
         : `${value.length} selected`;
 
+  const dropdown =
+    mounted && open && rect
+      ? createPortal(
+          <div
+            ref={rootRef}
+            style={{
+              position: "fixed",
+              top: rect.bottom + 4,
+              left: rect.left,
+              width: rect.width,
+              zIndex: 9999,
+            }}
+            className="overflow-hidden rounded-xl border border-border/60 bg-popover/95 shadow-xl backdrop-blur-xl"
+          >
+            <div className="border-b border-border/60 p-2">
+              <input
+                type="text"
+                value={filter}
+                onChange={(e) => setFilter(e.target.value)}
+                placeholder={`Filter ${label.toLowerCase()}…`}
+                className="h-8 w-full rounded-md border border-border/60 bg-background/50 px-2 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            <ul className="max-h-56 overflow-y-auto p-1">
+              {filtered.length === 0 ? (
+                <li className="px-2 py-2 text-xs text-muted-foreground">No matches</li>
+              ) : (
+                filtered.map((o) => {
+                  const selected = value.includes(o);
+                  return (
+                    <li key={o}>
+                      <button
+                        type="button"
+                        onClick={() => toggle(o)}
+                        className={cn(
+                          "flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors",
+                          selected ? "bg-primary/10 text-foreground" : "hover:bg-accent/10"
+                        )}
+                      >
+                        <span className="truncate">{o}</span>
+                        {selected && <Check className="h-3 w-3 text-primary" />}
+                      </button>
+                    </li>
+                  );
+                })
+              )}
+            </ul>
+          </div>,
+          document.body
+        )
+      : null;
+
   return (
-    <div ref={ref} className="relative">
+    <div className="relative">
       <p className="mb-1.5 text-xs font-medium text-muted-foreground">{label}</p>
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((o) => !o)}
         className={cn(
@@ -85,43 +167,7 @@ export function MultiSelect({ label, placeholder = "Any", options, value, onChan
         </div>
       </button>
 
-      {open && (
-        <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-30 overflow-hidden rounded-xl border border-border/60 bg-popover/95 shadow-xl backdrop-blur-xl">
-          <div className="border-b border-border/60 p-2">
-            <input
-              type="text"
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              placeholder={`Filter ${label.toLowerCase()}…`}
-              className="h-8 w-full rounded-md border border-border/60 bg-background/50 px-2 text-xs focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-          </div>
-          <ul className="max-h-56 overflow-y-auto p-1">
-            {filtered.length === 0 ? (
-              <li className="px-2 py-2 text-xs text-muted-foreground">No matches</li>
-            ) : (
-              filtered.map((o) => {
-                const selected = value.includes(o);
-                return (
-                  <li key={o}>
-                    <button
-                      type="button"
-                      onClick={() => toggle(o)}
-                      className={cn(
-                        "flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors",
-                        selected ? "bg-primary/10 text-foreground" : "hover:bg-accent/10"
-                      )}
-                    >
-                      <span className="truncate">{o}</span>
-                      {selected && <Check className="h-3 w-3 text-primary" />}
-                    </button>
-                  </li>
-                );
-              })
-            )}
-          </ul>
-        </div>
-      )}
+      {dropdown}
     </div>
   );
 }

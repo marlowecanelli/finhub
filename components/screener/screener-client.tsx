@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Download, Filter as FilterIcon, RefreshCw } from "lucide-react";
+import { Download, Filter as FilterIcon, Flame, RefreshCw, Table as TableIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -14,6 +14,8 @@ import { FilterSidebar } from "./filter-sidebar";
 import { ResultsTable } from "./results-table";
 import { SavePresetDialog } from "./save-preset-dialog";
 import { PresetMenu } from "./preset-menu";
+import { SentimentHeatmap } from "./sentiment-heatmap";
+import { cn } from "@/lib/utils";
 import {
   applyFilters,
   applySort,
@@ -24,6 +26,7 @@ import {
   type ScreenerRow,
   type SortState,
 } from "@/lib/screener";
+import { emitEvent } from "@/lib/achievements/client";
 
 const PAGE_SIZE = 50;
 
@@ -47,6 +50,7 @@ export function ScreenerClient({ initialRows, refreshedAt }: Props) {
   const [page, setPage] = React.useState(0);
   const [saveOpen, setSaveOpen] = React.useState(false);
   const [presets, setPresets] = React.useState<ScreenerPreset[]>([]);
+  const [view, setView] = React.useState<"table" | "heatmap">("table");
 
   // Sync filters into the URL (replace, no scroll).
   React.useEffect(() => {
@@ -55,6 +59,8 @@ export function ScreenerClient({ initialRows, refreshedAt }: Props) {
     if (next === current) return;
     router.replace(next ? `${pathname}?${next}` : pathname, { scroll: false });
     setPage(0);
+    // A non-empty filter set counts as running a screen.
+    if (next.length > 0) void emitEvent("screen_run", {});
   }, [filters, pathname, router, params]);
 
   // Load saved presets once.
@@ -191,6 +197,37 @@ export function ScreenerClient({ initialRows, refreshedAt }: Props) {
             </SheetContent>
           </Sheet>
 
+          <div className="inline-flex rounded-md border border-border/60 bg-background/40 p-0.5 text-xs">
+            <button
+              type="button"
+              onClick={() => setView("table")}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded px-2.5 py-1 font-mono uppercase tracking-wider transition-colors",
+                view === "table"
+                  ? "bg-foreground/10 text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              aria-pressed={view === "table"}
+            >
+              <TableIcon className="h-3.5 w-3.5" />
+              Table
+            </button>
+            <button
+              type="button"
+              onClick={() => setView("heatmap")}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded px-2.5 py-1 font-mono uppercase tracking-wider transition-colors",
+                view === "heatmap"
+                  ? "bg-foreground/10 text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              aria-pressed={view === "heatmap"}
+            >
+              <Flame className="h-3.5 w-3.5" />
+              Heatmap
+            </button>
+          </div>
+
           <PresetMenu
             presets={presets}
             onApply={(p) => setFilters(p.filters)}
@@ -213,14 +250,22 @@ export function ScreenerClient({ initialRows, refreshedAt }: Props) {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
         <div className="hidden lg:block">{sidebar}</div>
-        <ResultsTable
-          rows={sorted}
-          sort={sort}
-          onSort={setSort}
-          page={page}
-          pageSize={PAGE_SIZE}
-          onPage={setPage}
-        />
+        {view === "table" ? (
+          <ResultsTable
+            rows={sorted}
+            sort={sort}
+            onSort={setSort}
+            page={page}
+            pageSize={PAGE_SIZE}
+            onPage={setPage}
+          />
+        ) : (
+          <SentimentHeatmap
+            rows={sorted}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+          />
+        )}
       </div>
 
       <SavePresetDialog

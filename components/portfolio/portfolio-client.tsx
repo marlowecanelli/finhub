@@ -17,9 +17,11 @@ import { PerformanceChart } from "./performance-chart";
 import { SectorDonut } from "./sector-donut";
 import { GainersLosers } from "./gainers-losers";
 import { HoldingsTable } from "./holdings-table";
+import { AnalyticsDashboard } from "./analytics/dashboard";
 import { HoldingFormDialog, type HoldingFormValues } from "./holding-form-dialog";
 import { DeleteConfirm } from "./delete-confirm";
 import { PortfolioEmpty } from "./empty-state";
+import { emitEvent } from "@/lib/achievements/client";
 
 const REFRESH_MS = 60_000;
 
@@ -89,6 +91,14 @@ export function PortfolioClient({ portfolio, initialHoldings }: Props) {
     [enriched]
   );
 
+  const analyticsPositions = React.useMemo(
+    () =>
+      enriched
+        .filter((h) => h.marketValue > 0)
+        .map((h) => ({ symbol: h.ticker, value: h.marketValue })),
+    [enriched]
+  );
+
   async function handleSave(values: HoldingFormValues) {
     const supabase = createClient();
     if (editing) {
@@ -118,8 +128,29 @@ export function PortfolioClient({ portfolio, initialHoldings }: Props) {
         .single<Holding>();
       if (error) throw error;
       setHoldings((rows) => [...rows, data]);
+      void emitEvent("holding_added", { ticker: values.ticker.toUpperCase() });
     }
     setEditing(null);
+  }
+
+  async function handleBulkSave(rows: HoldingFormValues[]) {
+    const supabase = createClient();
+    const inserts = rows.map((v) => ({
+      portfolio_id: portfolio.id,
+      ticker: v.ticker,
+      shares: v.shares,
+      cost_basis: v.cost_basis,
+      purchase_date: v.purchase_date,
+    }));
+    const { data, error } = await supabase
+      .from("holdings")
+      .insert(inserts)
+      .select();
+    if (error) throw error;
+    setHoldings((h) => [...h, ...(data as Holding[])]);
+    for (const v of rows) {
+      void emitEvent("holding_added", { ticker: v.ticker.toUpperCase() });
+    }
   }
 
   async function handleDelete() {
@@ -203,6 +234,8 @@ export function PortfolioClient({ portfolio, initialHoldings }: Props) {
             }}
             onDelete={(h) => setDeleting(h)}
           />
+
+          <AnalyticsDashboard positions={analyticsPositions} />
         </>
       )}
 
@@ -214,6 +247,7 @@ export function PortfolioClient({ portfolio, initialHoldings }: Props) {
         }}
         initial={editing}
         onSubmit={handleSave}
+        onBulkSubmit={handleBulkSave}
       />
 
       <DeleteConfirm

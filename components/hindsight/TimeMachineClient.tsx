@@ -10,6 +10,7 @@ import { HistoricalChart, type ChartSeries, type EventMarker } from "./Historica
 import { PresetCard } from "./PresetCard";
 import { ShareCard } from "./ShareCard";
 import { Confetti } from "./Confetti";
+import { TimelineScrubber } from "./TimelineScrubber";
 import { PRESETS, CRISIS_EVENTS, type Preset } from "@/lib/hindsight/presets";
 
 type Result = {
@@ -160,6 +161,8 @@ export function TimeMachineClient({
   return (
     <div className="space-y-12">
       <Confetti trigger={confetti > 0} />
+
+      <TimelineScrubber date={date} onChange={setDate} />
 
       <div className="grid gap-8 lg:grid-cols-[2fr_3fr]">
         {/* Inputs */}

@@ -11,6 +11,8 @@ import {
 import { MarketCard } from "@/components/dashboard/market-card";
 import { EmptyState } from "@/components/dashboard/empty-state";
 import { QuickActions } from "@/components/dashboard/quick-actions";
+import { TodayEventsStripe } from "@/components/calendar/today-stripe";
+import { ThisWeekWidget } from "@/components/calendar/this-week-widget";
 import type { LucideIcon } from "lucide-react";
 
 type MarketEntry = {
@@ -128,6 +130,11 @@ export default function DashboardPage() {
       />
 
       <div className="mx-auto max-w-[1400px] space-y-12 px-4 py-10 md:px-8 md:py-14">
+        {/* Today's events stripe */}
+        <div className="rise-in">
+          <TodayEventsStripe />
+        </div>
+
         {/* Editorial masthead */}
         <header className="rise-in border-b border-border/60 pb-8">
           <div className="flex flex-wrap items-end justify-between gap-4">
@@ -187,11 +194,24 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* Modules */}
-        <section className="rise-in" style={{ animationDelay: "320ms" }}>
+        {/* Week ahead */}
+        <section className="rise-in" style={{ animationDelay: "300ms" }}>
           <div className="mb-5 flex items-baseline gap-3">
             <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
               02
+            </span>
+            <h2 className="font-display text-2xl font-medium tracking-tight md:text-3xl">
+              Calendar
+            </h2>
+          </div>
+          <ThisWeekWidget />
+        </section>
+
+        {/* Modules */}
+        <section className="rise-in" style={{ animationDelay: "380ms" }}>
+          <div className="mb-5 flex items-baseline gap-3">
+            <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              03
             </span>
             <h2 className="font-display text-2xl font-medium tracking-tight md:text-3xl">
               Your workspace
@@ -216,10 +236,10 @@ export default function DashboardPage() {
         </section>
 
         {/* Quick actions */}
-        <section className="rise-in" style={{ animationDelay: "440ms" }}>
+        <section className="rise-in" style={{ animationDelay: "500ms" }}>
           <div className="mb-5 flex items-baseline gap-3">
             <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-              03
+              04
             </span>
             <h2 className="font-display text-2xl font-medium tracking-tight md:text-3xl">
               Quick actions
