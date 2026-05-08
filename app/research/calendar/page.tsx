@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { DataFreshnessIndicator } from "@/components/research/DataFreshnessIndicator";
-import { mockCalendarReleases } from "@/lib/api/research/calendar";
 import type { CalendarRelease, MarketImpact } from "@/lib/types/research";
 import { Clock, TrendingUp, TrendingDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -31,13 +30,35 @@ function Countdown({ targetDate }: { targetDate: Date }) {
   );
 }
 
+interface CalendarResponse {
+  configured: boolean;
+  message?: string;
+  releases: (Omit<CalendarRelease, "releaseTime"> & { releaseTime: string })[];
+}
+
 export default function CalendarPage() {
   const [releases, setReleases] = useState<CalendarRelease[]>([]);
   const [loading, setLoading] = useState(true);
+  const [configured, setConfigured] = useState(true);
+  const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    setReleases(mockCalendarReleases());
-    setLoading(false);
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/research/calendar");
+        const json = await res.json() as CalendarResponse;
+        if (cancelled) return;
+        setConfigured(json.configured);
+        setMessage(json.message ?? null);
+        setReleases(json.releases.map(r => ({ ...r, releaseTime: new Date(r.releaseTime) })));
+      } catch {
+        if (!cancelled) setMessage("Failed to load calendar");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   const now = new Date();
@@ -54,6 +75,12 @@ export default function CalendarPage() {
         </div>
         <DataFreshnessIndicator cacheKey="calendar:releases" />
       </div>
+
+      {!configured && message && (
+        <div className="rounded-lg p-4 text-xs text-[#FFB347]" style={{ background: "#FFB34710", border: "1px solid #FFB34730" }}>
+          {message}
+        </div>
+      )}
 
       {/* Next high-impact countdown */}
       {nextHighImpact && (

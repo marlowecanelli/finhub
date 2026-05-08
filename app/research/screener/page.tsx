@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { ScreenerTable } from "@/components/research/ScreenerTable";
 import { DataFreshnessIndicator } from "@/components/research/DataFreshnessIndicator";
-import { mockScreenerUniverse } from "@/lib/api/research/screener";
 import type { ScreenerStock } from "@/lib/types/research";
 
 export default function ScreenerPage() {
@@ -11,8 +10,20 @@ export default function ScreenerPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setStocks(mockScreenerUniverse());
-    setLoading(false);
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/research/screener");
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json() as { stocks: ScreenerStock[] };
+        if (!cancelled) setStocks(json.stocks);
+      } catch {
+        if (!cancelled) setStocks([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   return (

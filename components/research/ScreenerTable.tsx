@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ArrowUp, ArrowDown, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ScreenerStock, ScreenerPreset } from "@/lib/types/research";
-import { PRESET_FILTERS } from "@/lib/api/research/screener";
+import { PRESET_FILTERS } from "@/lib/api/research/screenerPresets";
 
 const PRESET_LABELS: Record<ScreenerPreset, string> = {
   "deep-value":           "Deep Value",

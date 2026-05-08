@@ -1,11 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip,
   CartesianGrid, ReferenceLine, LineChart, Line, Legend,
 } from "recharts";
-import { mockYieldCurve } from "@/lib/api/research/macro";
 import type { YieldPoint } from "@/lib/types/research";
 
 function generateHistoricalCurves() {
@@ -56,13 +55,36 @@ function nyFedRecessionProb(spread: number): number {
 }
 
 export function YieldCurveVisualizer() {
-  const today = mockYieldCurve();
+  const [today, setToday] = useState<YieldPoint[]>([]);
+  const [configured, setConfigured] = useState(true);
   const hist = generateHistoricalCurves();
 
   const [showHistorical, setShowHistorical] = useState(false);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/research/yield-curve");
+        const json = await res.json() as { configured: boolean; points: YieldPoint[] };
+        if (cancelled) return;
+        setConfigured(json.configured);
+        setToday(json.points ?? []);
+      } catch { /* noop */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const spread = computeSpread(today);
   const recProb = nyFedRecessionProb(spread);
+
+  if (!configured) {
+    return (
+      <div className="rounded-lg p-5 text-xs text-[#FFB347]" style={{ background: "#FFB34710", border: "1px solid #FFB34730" }}>
+        Yield curve requires FRED_API_KEY. Get a free key at https://fredaccount.stlouisfed.org/apikey and add it to .env.local.
+      </div>
+    );
+  }
 
   const maturityOrder = ["1M","3M","6M","1Y","2Y","3Y","5Y","7Y","10Y","20Y","30Y"];
 

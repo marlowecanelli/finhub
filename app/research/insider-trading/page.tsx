@@ -5,7 +5,6 @@ import { InsiderFeed } from "@/components/research/InsiderFeed";
 import { InsiderDetailDrawer } from "@/components/research/InsiderDetailDrawer";
 import { MetricCard } from "@/components/research/MetricCard";
 import { DataFreshnessIndicator } from "@/components/research/DataFreshnessIndicator";
-import { mockInsiderTransactions } from "@/lib/api/research/insider";
 import { scoreTransactionBatch } from "@/lib/analysis/insiderAnomalies";
 import type { InsiderTransaction, InsiderRole, TransactionType } from "@/lib/types/research";
 import { Search, SlidersHorizontal } from "lucide-react";
@@ -25,12 +24,30 @@ export default function InsiderTradingPage() {
   const [minValue, setMinValue] = useState(0);
   const [anomalyThreshold, setAnomalyThreshold] = useState<"all" | "notable" | "significant" | "high-conviction">("all");
 
-  useEffect(() => {
-    const raw = mockInsiderTransactions(60);
-    const scored = scoreTransactionBatch(raw);
-    setTransactions(scored);
-    setLoading(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/research/insider");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json() as { transactions: (Omit<InsiderTransaction, "filingDate" | "transactionDate" | "priorPurchaseDate"> & { filingDate: string; transactionDate: string; priorPurchaseDate?: string })[] };
+      const hydrated: InsiderTransaction[] = json.transactions.map(t => ({
+        ...t,
+        filingDate: new Date(t.filingDate),
+        transactionDate: new Date(t.transactionDate),
+        priorPurchaseDate: t.priorPurchaseDate ? new Date(t.priorPurchaseDate) : undefined,
+      }));
+      setTransactions(scoreTransactionBatch(hydrated));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load");
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { void load(); }, [load]);
 
   const filtered = transactions.filter(tx => {
     if (tickerSearch && !tx.ticker.toUpperCase().includes(tickerSearch.toUpperCase()) && !tx.companyName.toLowerCase().includes(tickerSearch.toLowerCase())) return false;
@@ -46,12 +63,7 @@ export default function InsiderTradingPage() {
   });
 
   function handleRefresh() {
-    setLoading(true);
-    setTimeout(() => {
-      const raw = mockInsiderTransactions(60);
-      setTransactions(scoreTransactionBatch(raw));
-      setLoading(false);
-    }, 800);
+    void load();
   }
 
   // Summary stats

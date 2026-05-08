@@ -4,18 +4,39 @@ import { useState, useEffect } from "react";
 import { MacroWidget } from "@/components/research/MacroWidget";
 import { YieldCurveVisualizer } from "@/components/research/YieldCurveVisualizer";
 import { DataFreshnessIndicator } from "@/components/research/DataFreshnessIndicator";
-import { mockMacroSeries } from "@/lib/api/research/macro";
 import { classifyMacroRegime } from "@/lib/analysis/regimeClassifier";
 import type { MacroSeries } from "@/lib/types/research";
+
+interface MacroResponse {
+  configured: boolean;
+  message?: string;
+  series: (Omit<MacroSeries, "lastUpdated"> & { lastUpdated: string })[];
+}
 
 export default function MacroDashboardPage() {
   const [series, setSeries] = useState<MacroSeries[]>([]);
   const [loading, setLoading] = useState(true);
+  const [configured, setConfigured] = useState(true);
+  const [message, setMessage] = useState<string | null>(null);
   const [expandedSeries, setExpandedSeries] = useState<MacroSeries | null>(null);
 
   useEffect(() => {
-    setSeries(mockMacroSeries());
-    setLoading(false);
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/research/macro");
+        const json = await res.json() as MacroResponse;
+        if (cancelled) return;
+        setConfigured(json.configured);
+        setMessage(json.message ?? null);
+        setSeries(json.series.map(s => ({ ...s, lastUpdated: new Date(s.lastUpdated) })));
+      } catch {
+        if (!cancelled) setMessage("Failed to load macro data");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   const regime = series.length ? classifyMacroRegime(series) : null;
@@ -36,6 +57,12 @@ export default function MacroDashboardPage() {
         </div>
         <DataFreshnessIndicator cacheKey="macro:all" />
       </div>
+
+      {!configured && message && (
+        <div className="rounded-lg p-4 text-xs text-[#FFB347]" style={{ background: "#FFB34710", border: "1px solid #FFB34730" }}>
+          {message}
+        </div>
+      )}
 
       {/* Regime banner */}
       {regime && (

@@ -4,8 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
-  Eye, TrendingDown, BarChart2, RefreshCw, Calendar,
-  Zap, Building2, Moon, CalendarDays, Landmark, Star, Filter,
+  Eye, BarChart2, RefreshCw, Calendar,
+  CalendarDays, Star, Filter,
   ChevronLeft, ChevronRight, FlaskConical, LayoutDashboard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -18,18 +18,13 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: "Insider Activity",       href: "/research/insider-trading",  icon: Eye,          live: true },
-  { label: "Short Interest",         href: "/research/short-interest",   icon: TrendingDown, live: true },
-  { label: "Macro Dashboard",        href: "/research/macro",            icon: BarChart2 },
-  { label: "Sector Rotation",        href: "/research/sector-rotation",  icon: RefreshCw },
   { label: "Earnings Intelligence",  href: "/research/earnings",         icon: Calendar,     live: true },
-  { label: "Options Flow",           href: "/research/options-flow",     icon: Zap,          live: true },
-  { label: "Institutional",          href: "/research/institutional",    icon: Building2 },
-  { label: "Dark Pool",              href: "/research/dark-pool",        icon: Moon,         live: true },
+  { label: "Analyst Ratings",        href: "/research/analyst-ratings",  icon: Star,         live: true },
+  { label: "Insider Activity",       href: "/research/insider-trading",  icon: Eye,          live: true },
+  { label: "Sector Rotation",        href: "/research/sector-rotation",  icon: RefreshCw,    live: true },
+  { label: "Val. Screener",          href: "/research/screener",         icon: Filter,       live: true },
+  { label: "Macro Dashboard",        href: "/research/macro",            icon: BarChart2 },
   { label: "Econ Calendar",          href: "/research/calendar",         icon: CalendarDays },
-  { label: "Congress Trades",        href: "/research/congress-trades",  icon: Landmark },
-  { label: "Analyst Ratings",        href: "/research/analyst-ratings",  icon: Star },
-  { label: "Val. Screener",          href: "/research/screener",         icon: Filter },
 ];
 
 export function ResearchSidebar() {

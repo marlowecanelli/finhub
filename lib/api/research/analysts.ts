@@ -1,105 +1,121 @@
-/**
- * Analyst Ratings API — aggregated from public sources
- * Source: Tipranks-style data via scraping / paid APIs
- * Rate limit: varies by provider
- */
-
 import { getOrFetch } from "@/lib/cache";
+import { safeQuoteSummary } from "./yahoo";
 import type { AnalystConsensus, AnalystRating, AnalystRatingChange } from "@/lib/types/research";
-
-const FIRMS = [
-  { name: "Goldman Sachs", accuracy: 68 },
-  { name: "Morgan Stanley", accuracy: 64 },
-  { name: "JP Morgan", accuracy: 71 },
-  { name: "Bank of America", accuracy: 59 },
-  { name: "Citi Research", accuracy: 62 },
-  { name: "Barclays", accuracy: 55 },
-  { name: "Wedbush Securities", accuracy: 73 },
-  { name: "Piper Sandler", accuracy: 67 },
-  { name: "UBS Group", accuracy: 58 },
-  { name: "Deutsche Bank", accuracy: 52 },
-  { name: "Wells Fargo", accuracy: 61 },
-  { name: "Needham & Co", accuracy: 69 },
-];
 
 const RATINGS: AnalystRating[] = ["Strong Buy", "Buy", "Hold", "Sell", "Strong Sell"];
 
-function rand(min: number, max: number) { return Math.random() * (max - min) + min; }
-function daysAgo(n: number): Date {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d;
-}
-
-function randomRating(): AnalystRating {
-  const w = [0.25, 0.4, 0.25, 0.07, 0.03];
-  const r = Math.random();
-  let cumul = 0;
-  for (let i = 0; i < w.length; i++) {
-    cumul += w[i]!;
-    if (r < cumul) return RATINGS[i] ?? "Hold";
+function fromYahooRecKey(key: string | undefined): AnalystRating | null {
+  switch ((key ?? "").toLowerCase().replace(/[\s_-]/g, "")) {
+    case "strongbuy": return "Strong Buy";
+    case "buy": case "outperform": case "overweight": case "positive": case "accumulate": return "Buy";
+    case "hold": case "neutral": case "marketperform": case "equalweight": case "peerperform": return "Hold";
+    case "sell": case "underperform": case "underweight": case "negative": case "reduce": return "Sell";
+    case "strongsell": return "Strong Sell";
+    default: return null;
   }
-  return "Hold";
 }
 
-export function mockAnalystConsensus(ticker = "AAPL"): AnalystConsensus {
-  const currentPrice = rand(100, 700);
-  const distribution: Record<AnalystRating, number> = {
-    "Strong Buy": Math.floor(rand(3, 15)),
-    "Buy": Math.floor(rand(8, 25)),
-    "Hold": Math.floor(rand(4, 15)),
-    "Sell": Math.floor(rand(0, 5)),
-    "Strong Sell": Math.floor(rand(0, 2)),
-  };
-
-  const totalRatings = Object.values(distribution).reduce((s, v) => s + v, 0);
-  let consensusRating: AnalystRating = "Buy";
-  let maxRatings = 0;
-  for (const [rating, count] of Object.entries(distribution)) {
-    if (count > maxRatings) { maxRatings = count; consensusRating = rating as AnalystRating; }
-  }
-
-  const medianTarget = currentPrice * rand(1.05, 1.45);
-  const lowTarget = medianTarget * rand(0.7, 0.9);
-  const highTarget = medianTarget * rand(1.1, 1.4);
-
-  const recentChanges: AnalystRatingChange[] = FIRMS.slice(0, 8).map((firm, i) => ({
-    id: `ac-${ticker}-${i}`,
-    firm: firm.name,
-    analyst: `Research Analyst`,
-    previousRating: randomRating(),
-    newRating: randomRating(),
-    previousPriceTarget: parseFloat((medianTarget * rand(0.85, 1.1)).toFixed(0)),
-    newPriceTarget: parseFloat((medianTarget * rand(0.9, 1.15)).toFixed(0)),
-    changeDate: daysAgo(Math.floor(rand(1, 30))),
-    firmAccuracyScore: firm.accuracy,
-  }));
-
-  const now = new Date();
-  const epsRevisions = Array.from({ length: 12 }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - 11 + i, 1);
-    const base = rand(3, 15);
-    return {
-      date: d.toISOString().slice(0, 10),
-      estimate: parseFloat((base + i * rand(-0.1, 0.2)).toFixed(2)),
-    };
-  });
-
-  return {
-    ticker,
-    companyName: ticker,
-    consensus: consensusRating,
-    distribution,
-    lowTarget: parseFloat(lowTarget.toFixed(2)),
-    medianTarget: parseFloat(medianTarget.toFixed(2)),
-    highTarget: parseFloat(highTarget.toFixed(2)),
-    currentPrice: parseFloat(currentPrice.toFixed(2)),
-    recentChanges,
-    epsRevisions,
-  };
+function meanToRating(mean: number | undefined): AnalystRating {
+  if (mean == null) return "Hold";
+  if (mean <= 1.5) return "Strong Buy";
+  if (mean <= 2.5) return "Buy";
+  if (mean <= 3.5) return "Hold";
+  if (mean <= 4.5) return "Sell";
+  return "Strong Sell";
 }
 
-export async function fetchAnalystConsensus(ticker: string): Promise<AnalystConsensus> {
-  const key = `analysts:${ticker}`;
-  return getOrFetch(key, async () => mockAnalystConsensus(ticker), 60 * 60 * 1000);
+export async function fetchAnalystConsensus(ticker: string): Promise<AnalystConsensus | null> {
+  const symbol = ticker.toUpperCase();
+  return getOrFetch(
+    `analysts:${symbol}`,
+    async () => {
+      const summary = await safeQuoteSummary(symbol, [
+        "financialData",
+        "recommendationTrend",
+        "upgradeDowngradeHistory",
+        "price",
+        "earningsTrend",
+      ]);
+      if (!summary) return null;
+
+      const fin = summary.financialData;
+      const recTrend = summary.recommendationTrend?.trend ?? [];
+      const latest = recTrend[0];
+
+      const distribution = {
+        "Strong Buy": latest?.strongBuy ?? 0,
+        "Buy": latest?.buy ?? 0,
+        "Hold": latest?.hold ?? 0,
+        "Sell": latest?.sell ?? 0,
+        "Strong Sell": latest?.strongSell ?? 0,
+      } as Record<AnalystRating, number>;
+
+      const totalAnalysts = RATINGS.reduce((s, r) => s + distribution[r], 0);
+      const meanRec = typeof fin?.recommendationMean === "number" ? fin.recommendationMean : undefined;
+
+      const consensus: AnalystRating = totalAnalysts > 0
+        ? RATINGS.reduce((best, r) => distribution[r] > distribution[best] ? r : best, "Hold" as AnalystRating)
+        : meanToRating(meanRec);
+
+      const currentPrice =
+        summary.price?.regularMarketPrice ??
+        (typeof fin?.currentPrice === "number" ? fin.currentPrice : 0);
+      const lowTarget = typeof fin?.targetLowPrice === "number" ? fin.targetLowPrice : 0;
+      const medianTarget = typeof fin?.targetMedianPrice === "number" ? fin.targetMedianPrice : 0;
+      const highTarget = typeof fin?.targetHighPrice === "number" ? fin.targetHighPrice : 0;
+
+      const history = (summary.upgradeDowngradeHistory?.history ?? [])
+        .slice()
+        .sort((a, b) => {
+          const ad = a.epochGradeDate instanceof Date ? a.epochGradeDate.getTime() : 0;
+          const bd = b.epochGradeDate instanceof Date ? b.epochGradeDate.getTime() : 0;
+          return bd - ad;
+        })
+        .slice(0, 12);
+
+      const recentChanges: AnalystRatingChange[] = history.map((h, i) => {
+        const newRating = fromYahooRecKey(h.toGrade) ?? "Hold";
+        const previousRating = fromYahooRecKey(h.fromGrade) ?? newRating;
+        const date = h.epochGradeDate instanceof Date ? h.epochGradeDate : new Date();
+        return {
+          id: `chg-${symbol}-${i}-${date.getTime()}`,
+          firm: h.firm ?? "—",
+          analyst: h.firm ?? "—",
+          previousRating,
+          newRating,
+          previousPriceTarget: undefined,
+          newPriceTarget: undefined,
+          changeDate: date,
+          firmAccuracyScore: 0,
+        };
+      });
+
+      const earningsTrend = summary.earningsTrend?.trend ?? [];
+      const epsRevisions = earningsTrend
+        .filter(t => typeof t.earningsEstimate?.avg === "number")
+        .map(t => {
+          const end = t.endDate;
+          const dateStr = end instanceof Date
+            ? end.toISOString().slice(0, 10)
+            : typeof end === "string" ? end : "";
+          return { date: dateStr, estimate: t.earningsEstimate!.avg as number };
+        })
+        .filter(r => r.date)
+        .sort((a, b) => a.date.localeCompare(b.date));
+
+      return {
+        ticker: symbol,
+        companyName: summary.price?.longName ?? summary.price?.shortName ?? symbol,
+        consensus,
+        distribution,
+        lowTarget,
+        medianTarget,
+        highTarget,
+        currentPrice,
+        recentChanges,
+        epsRevisions,
+      };
+    },
+    15 * 60 * 1000,
+  );
 }

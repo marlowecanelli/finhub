@@ -1,10 +1,5 @@
-/**
- * Sector Rotation API — derived from SPDR sector ETF price data
- * Source: Yahoo Finance / polygon.io for ETF OHLCV
- * Rate limit: Yahoo Finance ~100 req/min
- */
-
 import { getOrFetch } from "@/lib/cache";
+import { safeChart, safeQuote } from "./yahoo";
 import type { SectorPerformance, SectorETF, Timeframe } from "@/lib/types/research";
 
 export const SECTOR_ETFS: SectorETF[] = [
@@ -21,78 +16,104 @@ export const SECTOR_ETFS: SectorETF[] = [
   { ticker: "XLC",  name: "Communication",          sector: "Communication",          color: "#C084FC" },
 ];
 
-function rand(min: number, max: number) {
-  return Math.random() * (max - min) + min;
+const TOP_HOLDINGS: Record<string, string[]> = {
+  XLK:  ["AAPL", "MSFT", "NVDA", "AVGO", "ORCL"],
+  XLF:  ["BRK-B", "JPM", "V", "MA", "BAC"],
+  XLE:  ["XOM", "CVX", "COP", "EOG", "WMB"],
+  XLV:  ["LLY", "JNJ", "UNH", "MRK", "ABBV"],
+  XLI:  ["GE", "CAT", "RTX", "HON", "UNP"],
+  XLY:  ["AMZN", "TSLA", "HD", "MCD", "BKNG"],
+  XLP:  ["COST", "WMT", "PG", "KO", "PEP"],
+  XLRE: ["PLD", "AMT", "EQIX", "WELL", "DLR"],
+  XLU:  ["NEE", "SO", "DUK", "CEG", "AEP"],
+  XLB:  ["LIN", "SHW", "ECL", "APD", "FCX"],
+  XLC:  ["META", "GOOGL", "GOOG", "NFLX", "DIS"],
+};
+
+const TIMEFRAME_DAYS: Record<Timeframe, number | "ytd"> = {
+  "1W": 7,
+  "1M": 30,
+  "3M": 91,
+  "6M": 182,
+  "YTD": "ytd",
+  "1Y": 365,
+};
+
+function startDateFor(timeframe: Timeframe): Date {
+  const d = TIMEFRAME_DAYS[timeframe];
+  if (d === "ytd") {
+    const now = new Date();
+    return new Date(now.getFullYear(), 0, 1);
+  }
+  const start = new Date();
+  start.setDate(start.getDate() - d);
+  return start;
 }
 
-const PERF_RANGES: Record<Timeframe, [number, number]> = {
-  "1W": [-3, 4],
-  "1M": [-8, 12],
-  "3M": [-15, 20],
-  "6M": [-20, 35],
-  "YTD": [-25, 45],
-  "1Y": [-30, 55],
-};
+async function fetchEtf(etf: SectorETF, timeframe: Timeframe): Promise<SectorPerformance | null> {
+  const start = startDateFor(timeframe);
+  // Fetch slightly earlier so we have a baseline price.
+  const earlier = new Date(start);
+  earlier.setDate(earlier.getDate() - 5);
 
-const TECH_HOLDINGS = ["AAPL", "MSFT", "NVDA", "META", "AVGO"];
-const FIN_HOLDINGS  = ["JPM", "BAC", "WFC", "GS", "MS"];
-const ENERGY_HOLDINGS = ["XOM", "CVX", "COP", "EOG", "SLB"];
-const HEALTH_HOLDINGS = ["UNH", "LLY", "JNJ", "ABBV", "MRK"];
-const IND_HOLDINGS  = ["CAT", "RTX", "HON", "UPS", "BA"];
-const DISC_HOLDINGS = ["AMZN", "TSLA", "HD", "MCD", "NKE"];
-const STAP_HOLDINGS = ["PG", "KO", "PEP", "WMT", "COST"];
-const REIT_HOLDINGS = ["AMT", "PLD", "EQIX", "O", "PSA"];
-const UTIL_HOLDINGS = ["NEE", "DUK", "SO", "D", "AEP"];
-const MAT_HOLDINGS  = ["LIN", "APD", "ECL", "FCX", "NEM"];
-const COMM_HOLDINGS = ["META", "GOOGL", "VZ", "T", "NFLX"];
+  const [chart, quote, holdingsData] = await Promise.all([
+    safeChart(etf.ticker, earlier, "1d"),
+    safeQuote(etf.ticker),
+    Promise.all((TOP_HOLDINGS[etf.ticker] ?? []).map(async t => {
+      const h = await safeQuote(t);
+      return {
+        ticker: t,
+        name: (h && !Array.isArray(h) ? h.shortName ?? h.longName : null) ?? t,
+        returnPct: (h && !Array.isArray(h)
+          ? (timeframe === "1Y" ? (h.fiftyTwoWeekChangePercent ?? 0) : (h.regularMarketChangePercent ?? 0))
+          : 0),
+        weight: 0,
+      };
+    })),
+  ]);
 
-const HOLDINGS_MAP: Record<string, string[]> = {
-  XLK: TECH_HOLDINGS, XLF: FIN_HOLDINGS, XLE: ENERGY_HOLDINGS,
-  XLV: HEALTH_HOLDINGS, XLI: IND_HOLDINGS, XLY: DISC_HOLDINGS,
-  XLP: STAP_HOLDINGS, XLRE: REIT_HOLDINGS, XLU: UTIL_HOLDINGS,
-  XLB: MAT_HOLDINGS, XLC: COMM_HOLDINGS,
-};
+  if (!chart.length) return null;
 
-export function mockSectorPerformance(timeframe: Timeframe = "1M"): SectorPerformance[] {
-  const [lo, hi] = PERF_RANGES[timeframe];
+  const candles = chart.filter(c => typeof c.close === "number");
+  if (candles.length < 2) return null;
 
-  return SECTOR_ETFS.map(etf => {
-    const returnPct = parseFloat(rand(lo, hi).toFixed(2));
-    const rsRatio = parseFloat((100 + rand(-8, 10)).toFixed(2));
-    const rsMomentum = parseFloat((100 + rand(-8, 10)).toFixed(2));
-    const netFlow = rand(-500, 900) * 1e6;
-    const topHoldings = HOLDINGS_MAP[etf.ticker] ?? ["N/A"];
+  // Find first candle on or after `start`
+  const firstAfter = candles.find(c => c.date >= start) ?? candles[0]!;
+  const last = candles[candles.length - 1]!;
+  const baseline = firstAfter.close ?? last.close ?? 1;
+  const current = last.close ?? baseline;
+  const returnPct = baseline > 0 ? ((current - baseline) / baseline) * 100 : 0;
 
-    const constituents = topHoldings.map(ticker => ({
-      ticker,
-      name: ticker,
-      returnPct: parseFloat(rand(lo * 1.2, hi * 1.2).toFixed(2)),
-      weight: parseFloat(rand(4, 18).toFixed(2)),
-    }));
+  // RS ratio vs SPY: skip the second fetch for SPY here to keep it bounded; use return alone as proxy.
+  // We approximate RS-Ratio/Momentum as 100 + relative return, scaled.
+  const rsRatio = 100 + returnPct * 0.5;
+  const rsMomentum = 100 + returnPct * 0.7;
 
-    const historicalReturns: Record<string, number[]> = {};
-    for (let month = 1; month <= 12; month++) {
-      const key = month.toString();
-      historicalReturns[key] = Array.from({ length: 20 }, () =>
-        parseFloat(rand(-5, 8).toFixed(2))
-      );
-    }
+  const last20 = candles.slice(-20);
+  const avgVolume = last20.reduce((s, c) => s + (c.volume ?? 0), 0) / Math.max(1, last20.length);
+  const lastVolume = last.volume ?? 0;
+  const volumeVs20dAvg = avgVolume > 0 ? lastVolume / avgVolume : 1;
 
-    return {
-      etf,
-      returnPct,
-      rsRatio,
-      rsMomentum,
-      netFlow,
-      volumeVs20dAvg: parseFloat(rand(0.6, 2.0).toFixed(2)),
-      topHoldings,
-      constituents,
-      historicalReturns,
-    };
-  });
+  return {
+    etf,
+    returnPct: parseFloat(returnPct.toFixed(2)),
+    rsRatio: parseFloat(rsRatio.toFixed(2)),
+    rsMomentum: parseFloat(rsMomentum.toFixed(2)),
+    netFlow: 0,
+    volumeVs20dAvg: parseFloat(volumeVs20dAvg.toFixed(2)),
+    topHoldings: TOP_HOLDINGS[etf.ticker] ?? [],
+    constituents: holdingsData,
+    historicalReturns: {},
+  };
 }
 
 export async function fetchSectorPerformance(timeframe: Timeframe = "1M"): Promise<SectorPerformance[]> {
-  const key = `sectors:${timeframe}`;
-  return getOrFetch(key, async () => mockSectorPerformance(timeframe), 15 * 60 * 1000);
+  return getOrFetch(
+    `sectors:${timeframe}`,
+    async () => {
+      const results = await Promise.all(SECTOR_ETFS.map(etf => fetchEtf(etf, timeframe)));
+      return results.filter((s): s is SectorPerformance => s !== null);
+    },
+    15 * 60 * 1000,
+  );
 }

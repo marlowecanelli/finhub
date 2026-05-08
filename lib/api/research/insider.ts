@@ -1,136 +1,116 @@
-/**
- * Insider Trading API — SEC EDGAR Form 4 filings
- * Source: https://efts.sec.gov/LATEST/search-index?q=%22form+4%22&dateRange=custom
- * Rate limit: ~10 req/s, no auth required
- */
-
-import { z } from "zod";
 import { getOrFetch } from "@/lib/cache";
+import { safeQuoteSummary } from "./yahoo";
 import type { InsiderTransaction, Sector, InsiderRole, TransactionType } from "@/lib/types/research";
 
-export const InsiderTransactionSchema = z.object({
-  id: z.string(),
-  ticker: z.string(),
-  companyName: z.string(),
-  sector: z.string(),
-  insiderName: z.string(),
-  insiderRole: z.string(),
-  transactionType: z.enum(["PURCHASE", "SALE", "SALE_10B5_1"]),
-  shares: z.number(),
-  pricePerShare: z.number(),
-  totalValue: z.number(),
-  ownershipChangePct: z.number(),
-  filingDate: z.coerce.date(),
-  transactionDate: z.coerce.date(),
-  secFilingUrl: z.string(),
-  stockPriceAt52wLow: z.number(),
-  stockPriceCurrent: z.number(),
-  stock52wHigh: z.number(),
-  stock52wLow: z.number(),
-  priorPurchaseDate: z.coerce.date().optional(),
-  stockPriceChange60d: z.number(),
-  isOptionExercise: z.boolean(),
-  isGift: z.boolean(),
-});
-
-const SECTORS: Sector[] = [
-  "Technology", "Financials", "Healthcare", "Consumer Discretionary",
-  "Industrials", "Energy", "Communication", "Materials", "Real Estate",
-  "Consumer Staples", "Utilities"
-];
-
-const ROLES: InsiderRole[] = ["CEO", "CFO", "COO", "Director", "10%+ Owner", "SVP", "EVP", "President", "CTO"];
-
 const COMPANIES: { ticker: string; name: string; sector: Sector }[] = [
-  { ticker: "NVDA", name: "NVIDIA Corporation", sector: "Technology" },
-  { ticker: "AAPL", name: "Apple Inc.", sector: "Technology" },
-  { ticker: "META", name: "Meta Platforms Inc.", sector: "Communication" },
-  { ticker: "MSFT", name: "Microsoft Corporation", sector: "Technology" },
-  { ticker: "GOOGL", name: "Alphabet Inc.", sector: "Communication" },
-  { ticker: "JPM", name: "JPMorgan Chase & Co.", sector: "Financials" },
-  { ticker: "GS", name: "Goldman Sachs Group", sector: "Financials" },
-  { ticker: "XOM", name: "Exxon Mobil Corporation", sector: "Energy" },
-  { ticker: "UNH", name: "UnitedHealth Group", sector: "Healthcare" },
-  { ticker: "LLY", name: "Eli Lilly and Company", sector: "Healthcare" },
-  { ticker: "TSLA", name: "Tesla Inc.", sector: "Consumer Discretionary" },
-  { ticker: "AMZN", name: "Amazon.com Inc.", sector: "Consumer Discretionary" },
-  { ticker: "BAC", name: "Bank of America", sector: "Financials" },
-  { ticker: "HD", name: "Home Depot Inc.", sector: "Consumer Discretionary" },
-  { ticker: "CVX", name: "Chevron Corporation", sector: "Energy" },
-  { ticker: "ABBV", name: "AbbVie Inc.", sector: "Healthcare" },
-  { ticker: "PFE", name: "Pfizer Inc.", sector: "Healthcare" },
-  { ticker: "CAT", name: "Caterpillar Inc.", sector: "Industrials" },
-  { ticker: "DE", name: "Deere & Company", sector: "Industrials" },
-  { ticker: "NEE", name: "NextEra Energy", sector: "Utilities" },
+  { ticker: "NVDA", name: "NVIDIA Corporation",      sector: "Technology" },
+  { ticker: "AAPL", name: "Apple Inc.",              sector: "Technology" },
+  { ticker: "META", name: "Meta Platforms Inc.",     sector: "Communication" },
+  { ticker: "MSFT", name: "Microsoft Corporation",   sector: "Technology" },
+  { ticker: "GOOGL", name: "Alphabet Inc.",          sector: "Communication" },
+  { ticker: "JPM",  name: "JPMorgan Chase & Co.",    sector: "Financials" },
+  { ticker: "GS",   name: "Goldman Sachs Group",     sector: "Financials" },
+  { ticker: "XOM",  name: "Exxon Mobil Corporation", sector: "Energy" },
+  { ticker: "UNH",  name: "UnitedHealth Group",      sector: "Healthcare" },
+  { ticker: "LLY",  name: "Eli Lilly and Company",   sector: "Healthcare" },
+  { ticker: "TSLA", name: "Tesla Inc.",              sector: "Consumer Discretionary" },
+  { ticker: "AMZN", name: "Amazon.com Inc.",         sector: "Consumer Discretionary" },
+  { ticker: "BAC",  name: "Bank of America",         sector: "Financials" },
+  { ticker: "HD",   name: "Home Depot Inc.",         sector: "Consumer Discretionary" },
+  { ticker: "CVX",  name: "Chevron Corporation",     sector: "Energy" },
+  { ticker: "ABBV", name: "AbbVie Inc.",             sector: "Healthcare" },
+  { ticker: "PFE",  name: "Pfizer Inc.",             sector: "Healthcare" },
+  { ticker: "CAT",  name: "Caterpillar Inc.",        sector: "Industrials" },
+  { ticker: "DE",   name: "Deere & Company",         sector: "Industrials" },
+  { ticker: "NEE",  name: "NextEra Energy",          sector: "Utilities" },
 ];
 
-const INSIDER_NAMES = [
-  "Jensen Huang", "Tim Cook", "Mark Zuckerberg", "Satya Nadella",
-  "Jamie Dimon", "David Solomon", "Darren Woods", "Andrew Witty",
-  "David Ricks", "Elon Musk", "Andy Jassy", "Brian Moynihan",
-  "Ted Decker", "Mike Wirth", "Richard Gonzalez", "Albert Bourla",
-  "Jim Umpleby", "John May", "Kirk Crews", "Rebecca Kujawa",
-  "Sarah Chen", "Michael Torres", "Jennifer Walsh", "Robert Kim",
-];
-
-function randomBetween(min: number, max: number) {
-  return Math.random() * (max - min) + min;
+function classifyRole(rel: string | undefined): InsiderRole {
+  const r = (rel ?? "").toLowerCase();
+  if (r.includes("chief executive")) return "CEO";
+  if (r.includes("chief financial")) return "CFO";
+  if (r.includes("chief operating")) return "COO";
+  if (r.includes("chief technology")) return "CTO";
+  if (r.includes("chief marketing")) return "CMO";
+  if (r.includes("general counsel")) return "General Counsel";
+  if (r.includes("director")) return "Director";
+  if (r.includes("president")) return "President";
+  if (r.includes("evp") || r.includes("executive vp")) return "EVP";
+  if (r.includes("svp") || r.includes("senior vp")) return "SVP";
+  if (r.includes("vice president") || r.includes(" vp")) return "VP";
+  if (r.includes("10%") || r.includes("beneficial owner")) return "10%+ Owner";
+  return "Director";
 }
 
-function daysAgo(n: number) {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d;
+function classifyType(text: string | undefined, value: number | undefined): TransactionType {
+  const t = (text ?? "").toLowerCase();
+  if (t.includes("10b5-1") || t.includes("10 b 5-1")) return "SALE_10B5_1";
+  if (t.includes("sale") || t.includes("disposition")) return "SALE";
+  if (t.includes("purchase") || t.includes("acquisition")) return "PURCHASE";
+  // Fallback: negative value → sale
+  if (typeof value === "number" && value < 0) return "SALE";
+  return "PURCHASE";
 }
 
-export function mockInsiderTransactions(count = 50): InsiderTransaction[] {
-  return Array.from({ length: count }, (_, i) => {
-    const company = COMPANIES[i % COMPANIES.length]!;
-    const role = ROLES[Math.floor(Math.random() * ROLES.length)]!;
-    const type: TransactionType = Math.random() > 0.35 ? "PURCHASE" : Math.random() > 0.5 ? "SALE" : "SALE_10B5_1";
-    const shares = Math.floor(randomBetween(1000, 500000));
-    const price = randomBetween(20, 800);
-    const totalValue = shares * price;
-    const currentPrice = price * randomBetween(0.8, 1.2);
-    const low52w = currentPrice * randomBetween(0.5, 0.85);
-    const high52w = currentPrice * randomBetween(1.1, 1.6);
-    const filingDaysAgo = Math.floor(randomBetween(0, 30));
+function isOptionExercise(text: string | undefined) {
+  const t = (text ?? "").toLowerCase();
+  return t.includes("option") || t.includes("exercise") || t.includes("conversion");
+}
+
+function isGift(text: string | undefined) {
+  return (text ?? "").toLowerCase().includes("gift");
+}
+
+async function fetchOne(co: { ticker: string; name: string; sector: Sector }): Promise<InsiderTransaction[]> {
+  const summary = await safeQuoteSummary(co.ticker, ["insiderTransactions", "price", "summaryDetail"]);
+  if (!summary) return [];
+
+  const txs = summary.insiderTransactions?.transactions ?? [];
+  const currentPrice = summary.price?.regularMarketPrice ?? 0;
+  const high52 = summary.summaryDetail?.fiftyTwoWeekHigh ?? 0;
+  const low52 = summary.summaryDetail?.fiftyTwoWeekLow ?? 0;
+
+  return txs.slice(0, 10).map((t, i) => {
+    const value = typeof t.value === "number" ? Math.abs(t.value) : 0;
+    const shares = typeof t.shares === "number" ? Math.abs(t.shares) : 0;
+    const pricePerShare = shares > 0 && value > 0 ? value / shares : currentPrice;
+    const txDate = t.startDate instanceof Date ? t.startDate : new Date();
 
     return {
-      id: `insider-${i}-${Date.now()}`,
-      ticker: company.ticker,
-      companyName: company.name,
-      sector: company.sector,
-      insiderName: INSIDER_NAMES[i % INSIDER_NAMES.length]!,
-      insiderRole: role,
-      transactionType: type,
+      id: `insider-${co.ticker}-${i}-${txDate.getTime()}`,
+      ticker: co.ticker,
+      companyName: co.name,
+      sector: co.sector,
+      insiderName: t.filerName ?? "—",
+      insiderRole: classifyRole(typeof t.filerRelation === "string" ? t.filerRelation : undefined),
+      transactionType: classifyType(t.transactionText, typeof t.value === "number" ? t.value : undefined),
       shares,
-      pricePerShare: price,
-      totalValue,
-      ownershipChangePct: randomBetween(-25, 25),
-      filingDate: daysAgo(filingDaysAgo),
-      transactionDate: daysAgo(filingDaysAgo + Math.floor(randomBetween(1, 5))),
-      secFilingUrl: `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${company.ticker}&type=4`,
+      pricePerShare,
+      totalValue: value || shares * pricePerShare,
+      ownershipChangePct: 0,
+      filingDate: txDate,
+      transactionDate: txDate,
+      secFilingUrl: t.filerUrl || `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=${co.ticker}&type=4`,
       stockPriceCurrent: currentPrice,
-      stockPriceAt52wLow: low52w,
-      stock52wHigh: high52w,
-      stock52wLow: low52w,
-      priorPurchaseDate: Math.random() > 0.4 ? daysAgo(Math.floor(randomBetween(90, 730))) : undefined,
-      stockPriceChange60d: randomBetween(-35, 25),
-      isOptionExercise: Math.random() < 0.15,
-      isGift: Math.random() < 0.05,
+      stockPriceAt52wLow: low52,
+      stock52wHigh: high52,
+      stock52wLow: low52,
+      priorPurchaseDate: undefined,
+      stockPriceChange60d: 0,
+      isOptionExercise: isOptionExercise(t.transactionText),
+      isGift: isGift(t.transactionText),
     };
   });
 }
 
-export async function fetchInsiderTransactions(
-  ticker?: string,
-  days = 30
-): Promise<InsiderTransaction[]> {
-  const key = `insider:${ticker ?? "all"}:${days}`;
-  return getOrFetch(key, async () => {
-    // In production: fetch from SEC EDGAR
-    // const url = `https://efts.sec.gov/LATEST/search-index?q="form+4"&dateRange=custom&startdt=...`
-    return mockInsiderTransactions(50);
-  }, 15 * 60 * 1000);
+export async function fetchInsiderTransactions(): Promise<InsiderTransaction[]> {
+  return getOrFetch(
+    "insider:all",
+    async () => {
+      const results = await Promise.all(COMPANIES.map(fetchOne));
+      const all = results.flat();
+      return all.sort((a, b) => b.transactionDate.getTime() - a.transactionDate.getTime());
+    },
+    15 * 60 * 1000,
+  );
 }

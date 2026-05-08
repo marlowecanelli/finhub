@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { DataFreshnessIndicator } from "@/components/research/DataFreshnessIndicator";
-import { mockAnalystConsensus } from "@/lib/api/research/analysts";
-import type { AnalystConsensus, AnalystRating } from "@/lib/types/research";
+import type { AnalystConsensus, AnalystRating, AnalystRatingChange } from "@/lib/types/research";
 import { Search, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, LineChart, Line, CartesianGrid,
@@ -21,13 +20,33 @@ export default function AnalystRatingsPage() {
   const [search, setSearch] = useState("AAPL");
   const [data, setData] = useState<AnalystConsensus | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
-    setTimeout(() => {
-      setData(mockAnalystConsensus(ticker));
-      setLoading(false);
-    }, 200);
+    setError(null);
+    (async () => {
+      try {
+        const res = await fetch(`/api/research/analysts?ticker=${encodeURIComponent(ticker)}`);
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}));
+          throw new Error(j.error || `HTTP ${res.status}`);
+        }
+        const json = await res.json() as { consensus: AnalystConsensus & { recentChanges: (Omit<AnalystRatingChange, "changeDate"> & { changeDate: string })[] } };
+        if (cancelled) return;
+        const c = json.consensus;
+        setData({
+          ...c,
+          recentChanges: c.recentChanges.map(ch => ({ ...ch, changeDate: new Date(ch.changeDate) })),
+        });
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, [ticker]);
 
   const totalAnalysts = data ? Object.values(data.distribution).reduce((s, v) => s + v, 0) : 0;
@@ -71,6 +90,12 @@ export default function AnalystRatingsPage() {
           <DataFreshnessIndicator cacheKey={`analysts:${ticker}`} />
         </div>
       </div>
+
+      {error && (
+        <div className="rounded-lg p-3 text-xs text-[#FF5252]" style={{ background: "#FF525210", border: "1px solid #FF525230" }}>
+          {error}
+        </div>
+      )}
 
       {loading || !data ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -160,9 +185,11 @@ export default function AnalystRatingsPage() {
                     </div>
                     <div className="flex items-center justify-between text-[9px]">
                       <span className="text-[#3A3F52]">{change.changeDate.toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
-                      <span style={{ color: change.firmAccuracyScore > 65 ? "#39FF14" : "#717A94" }}>
-                        Accuracy: {change.firmAccuracyScore}%
-                      </span>
+                      {change.firmAccuracyScore > 0 && (
+                        <span style={{ color: change.firmAccuracyScore > 65 ? "#39FF14" : "#717A94" }}>
+                          Accuracy: {change.firmAccuracyScore}%
+                        </span>
+                      )}
                     </div>
                   </div>
                 );

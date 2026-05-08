@@ -1,79 +1,98 @@
-/**
- * Economic Calendar API — BLS/Fed release schedule
- * Source: https://www.bls.gov/schedule/news_release/, Federal Reserve
- * Rate limit: Static/hardcoded schedule + actuals from BLS API
- */
-
 import { getOrFetch } from "@/lib/cache";
+import { fredApiKey, fredObservations, fredReleaseDates } from "./fred";
 import type { CalendarRelease, MarketImpact } from "@/lib/types/research";
 
-function daysFromNow(n: number, hour = 8, minute = 30): Date {
-  const d = new Date();
-  d.setDate(d.getDate() + n);
-  d.setHours(hour, minute, 0, 0);
-  return d;
+interface ReleaseConfig {
+  name: string;
+  releaseId: number;
+  hourUtc: number;
+  minuteUtc: number;
+  seriesId: string;
+  units: "lin" | "pch" | "pc1";
+  unit: string;
+  impact: MarketImpact;
 }
 
-function rand(min: number, max: number) { return Math.random() * (max - min) + min; }
+const RELEASES: ReleaseConfig[] = [
+  { name: "CPI — YoY",                    releaseId: 10,  hourUtc: 12, minuteUtc: 30, seriesId: "CPIAUCSL",     units: "pc1", unit: "%", impact: "HIGH" },
+  { name: "PPI — YoY",                    releaseId: 46,  hourUtc: 12, minuteUtc: 30, seriesId: "PPIACO",       units: "pc1", unit: "%", impact: "HIGH" },
+  { name: "PCE Price Index — YoY",        releaseId: 21,  hourUtc: 12, minuteUtc: 30, seriesId: "PCEPI",        units: "pc1", unit: "%", impact: "HIGH" },
+  { name: "Initial Jobless Claims",       releaseId: 13,  hourUtc: 12, minuteUtc: 30, seriesId: "ICSA",         units: "lin", unit: "K", impact: "MEDIUM" },
+  { name: "Unemployment Rate",            releaseId: 50,  hourUtc: 12, minuteUtc: 30, seriesId: "UNRATE",       units: "lin", unit: "%", impact: "HIGH" },
+  { name: "Nonfarm Payrolls",             releaseId: 50,  hourUtc: 12, minuteUtc: 30, seriesId: "PAYEMS",       units: "lin", unit: "K", impact: "HIGH" },
+  { name: "Retail Sales (Ex-Auto) — YoY", releaseId: 41,  hourUtc: 12, minuteUtc: 30, seriesId: "RSXFS",        units: "pc1", unit: "%", impact: "HIGH" },
+  { name: "Industrial Production",        releaseId: 16,  hourUtc: 13, minuteUtc: 15, seriesId: "INDPRO",       units: "pch", unit: "%", impact: "MEDIUM" },
+  { name: "Housing Starts",               releaseId: 14,  hourUtc: 12, minuteUtc: 30, seriesId: "HOUST",        units: "lin", unit: "K", impact: "MEDIUM" },
+  { name: "Building Permits",             releaseId: 14,  hourUtc: 12, minuteUtc: 30, seriesId: "PERMIT",       units: "lin", unit: "K", impact: "MEDIUM" },
+  { name: "Real GDP — QoQ Annualized",    releaseId: 53,  hourUtc: 12, minuteUtc: 30, seriesId: "A191RL1Q225SBEA", units: "lin", unit: "%", impact: "HIGH" },
+  { name: "Michigan Consumer Sentiment",  releaseId: 130, hourUtc: 14, minuteUtc: 0,  seriesId: "UMCSENT",      units: "lin", unit: "",  impact: "MEDIUM" },
+  { name: "Federal Funds Rate",           releaseId: 101, hourUtc: 18, minuteUtc: 0,  seriesId: "FEDFUNDS",     units: "lin", unit: "%", impact: "HIGH" },
+];
 
-function genHistorical(base: number, count = 12): { date: string; actual: number; consensus: number }[] {
-  const now = new Date();
-  return Array.from({ length: count }, (_, i) => {
-    const d = new Date(now.getFullYear(), now.getMonth() - count + i, 1);
-    const consensus = parseFloat((base + rand(-0.3, 0.3)).toFixed(1));
-    const actual = parseFloat((consensus + rand(-0.4, 0.4)).toFixed(1));
-    return { date: d.toISOString().slice(0, 10), actual, consensus };
-  });
+function combineDate(dateStr: string, hour: number, minute: number): Date {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(Date.UTC(y!, m! - 1, d!, hour, minute, 0));
 }
 
-export function mockCalendarReleases(): CalendarRelease[] {
-  const releases: {
-    name: string;
-    offset: number;
-    hour: number;
-    prev: number;
-    consensus: number;
-    unit: string;
-    impact: MarketImpact;
-  }[] = [
-    { name: "CPI — Monthly",                  offset: 2,  hour: 8,  prev: 3.2, consensus: 3.1, unit: "%",    impact: "HIGH" },
-    { name: "PPI — Monthly",                   offset: 3,  hour: 8,  prev: 2.1, consensus: 2.0, unit: "%",    impact: "HIGH" },
-    { name: "Fed Minutes",                     offset: 4,  hour: 14, prev: 5.33, consensus: 5.33, unit: "%",  impact: "HIGH" },
-    { name: "Initial Jobless Claims",          offset: 0,  hour: 8,  prev: 215, consensus: 218, unit: "K",    impact: "MEDIUM" },
-    { name: "Retail Sales (ex-Auto)",          offset: 5,  hour: 8,  prev: 0.4, consensus: 0.3, unit: "%",    impact: "HIGH" },
-    { name: "Building Permits",                offset: 6,  hour: 8,  prev: 1450, consensus: 1430, unit: "K",  impact: "MEDIUM" },
-    { name: "Housing Starts",                  offset: 6,  hour: 8,  prev: 1380, consensus: 1360, unit: "K",  impact: "MEDIUM" },
-    { name: "Michigan Consumer Sentiment",     offset: 8,  hour: 10, prev: 72.4, consensus: 72.8, unit: "",    impact: "MEDIUM" },
-    { name: "Real GDP Q/Q (Advance)",         offset: 10, hour: 8,  prev: 2.8, consensus: 2.5, unit: "%",    impact: "HIGH" },
-    { name: "PCE Price Index",                offset: 12, hour: 8,  prev: 2.8, consensus: 2.7, unit: "%",    impact: "HIGH" },
-    { name: "Nonfarm Payrolls",               offset: 7,  hour: 8,  prev: 256, consensus: 185, unit: "K",    impact: "HIGH" },
-    { name: "Unemployment Rate",              offset: 7,  hour: 8,  prev: 3.9, consensus: 4.0, unit: "%",    impact: "HIGH" },
-    { name: "Industrial Production",          offset: 9,  hour: 9,  prev: 0.3, consensus: 0.2, unit: "%",    impact: "MEDIUM" },
-    { name: "Trade Balance",                  offset: 11, hour: 8,  prev: -68.9, consensus: -67.5, unit: "B", impact: "LOW" },
-    { name: "FOMC Rate Decision",             offset: 15, hour: 14, prev: 5.33, consensus: 5.33, unit: "%",  impact: "HIGH" },
-  ];
+async function fetchOne(cfg: ReleaseConfig): Promise<CalendarRelease[]> {
+  const today = new Date();
+  const startWindow = new Date(today);
+  startWindow.setDate(startWindow.getDate() - 90);
+  const endWindow = new Date(today);
+  endWindow.setDate(endWindow.getDate() + 60);
 
-  return releases.map((r, i) => {
-    const isPast = r.offset < 0;
-    const actual = isPast ? parseFloat((r.prev + rand(-0.3, 0.4)).toFixed(1)) : undefined;
-    const beat = actual !== undefined ? actual > r.consensus : null;
+  const [releaseDates, observations] = await Promise.all([
+    fredReleaseDates(cfg.releaseId, {
+      start: startWindow.toISOString().slice(0, 10),
+      end: endWindow.toISOString().slice(0, 10),
+    }),
+    fredObservations(cfg.seriesId, {
+      start: new Date(today.getFullYear() - 2, today.getMonth(), 1).toISOString().slice(0, 10),
+      units: cfg.units,
+    }),
+  ]);
+
+  const upcoming = releaseDates
+    .filter(rd => combineDate(rd.date, cfg.hourUtc, cfg.minuteUtc).getTime() >= today.getTime() - 24 * 3600 * 1000)
+    .slice(0, 1);
+
+  return upcoming.map((rd, i) => {
+    const releaseTime = combineDate(rd.date, cfg.hourUtc, cfg.minuteUtc);
+    const isPast = releaseTime.getTime() < today.getTime();
+
+    const sorted = observations.slice().sort((a, b) => a.date.localeCompare(b.date));
+    const previous = sorted[sorted.length - 2]?.value ?? sorted[sorted.length - 1]?.value ?? 0;
+    const actual = isPast ? sorted[sorted.length - 1]?.value : undefined;
+
+    const historical = sorted.slice(-12).map(o => ({
+      date: o.date,
+      actual: o.value,
+      consensus: o.value,
+    }));
 
     return {
-      id: `cal-${i}`,
-      name: r.name,
-      releaseTime: daysFromNow(r.offset, r.hour, 30),
-      previousValue: r.prev,
-      consensusValue: r.consensus,
-      actualValue: actual ?? undefined,
-      unit: r.unit,
-      impact: r.impact,
-      beat,
-      historicalVsConsensus: genHistorical(r.prev),
+      id: `cal-${cfg.seriesId}-${rd.date}-${i}`,
+      name: cfg.name,
+      releaseTime,
+      previousValue: previous,
+      consensusValue: undefined,
+      actualValue: actual,
+      unit: cfg.unit,
+      impact: cfg.impact,
+      beat: null,
+      historicalVsConsensus: historical,
     };
   });
 }
 
 export async function fetchCalendarReleases(): Promise<CalendarRelease[]> {
-  const key = "calendar:releases";
-  return getOrFetch(key, async () => mockCalendarReleases(), 60 * 60 * 1000);
+  if (!fredApiKey()) return [];
+  return getOrFetch(
+    "calendar:releases",
+    async () => {
+      const results = await Promise.all(RELEASES.map(fetchOne));
+      return results.flat().sort((a, b) => a.releaseTime.getTime() - b.releaseTime.getTime());
+    },
+    60 * 60 * 1000,
+  );
 }

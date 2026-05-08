@@ -110,10 +110,12 @@ export function EarningsCalendar({ events, loading = false }: EarningsCalendarPr
                       <span className="text-[#717A94]">Est </span>
                       <span className="text-[#C8D0E7]">{formatEPS(event.consensusEPS)}</span>
                     </div>
-                    <div className="text-[10px] font-mono">
-                      <span className="text-[#717A94]">Whisper </span>
-                      <span className="text-[#00D4FF]">{formatEPS(event.whisperEPS)}</span>
-                    </div>
+                    {event.whisperEPS > 0 && Math.abs(event.whisperEPS - event.consensusEPS) > 0.001 && (
+                      <div className="text-[10px] font-mono">
+                        <span className="text-[#717A94]">Whisper </span>
+                        <span className="text-[#00D4FF]">{formatEPS(event.whisperEPS)}</span>
+                      </div>
+                    )}
                     {isPast && event.actualEPS !== undefined && (
                       <div className="text-[10px] font-mono">
                         <span className="text-[#717A94]">Actual </span>
@@ -127,7 +129,7 @@ export function EarningsCalendar({ events, loading = false }: EarningsCalendarPr
                     )}
                   </div>
 
-                  <ImpliedMoveBar pct={event.impliedMovePct} />
+                  {event.impliedMovePct > 0 && <ImpliedMoveBar pct={event.impliedMovePct} />}
                 </div>
 
                 {/* Beat badge */}
