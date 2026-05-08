@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ResponsiveContainer, Treemap } from "recharts";
+import { Treemap } from "recharts";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import type { IndexKey } from "@/lib/index-constituents";
 
@@ -72,6 +72,20 @@ export function MarketMapClient({ initialIndex }: { initialIndex: string }) {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const mouseRef = useRef({ x: 0, y: 0 });
+  const [dims, setDims] = useState({ w: 0, h: 0 });
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      const { width, height } = entry.contentRect;
+      setDims({ w: Math.floor(width), h: Math.floor(height) });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const fetchData = useCallback(async (idx: IndexKey) => {
     setLoading(true);
@@ -211,12 +225,12 @@ export function MarketMapClient({ initialIndex }: { initialIndex: string }) {
             </div>
           )}
 
-          {!loading && !error && treemapData.length > 0 && (
-            <ResponsiveContainer width="100%" height="100%">
+          {!loading && !error && treemapData.length > 0 && dims.w > 0 && dims.h > 0 && (
               <Treemap
+                width={dims.w}
+                height={dims.h}
                 data={treemapData}
                 dataKey="value"
-                aspectRatio={1}
                 isAnimationActive={false}
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 content={((rawProps: Record<string, unknown>) => {
@@ -337,7 +351,6 @@ export function MarketMapClient({ initialIndex }: { initialIndex: string }) {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 }) as any}
               />
-            </ResponsiveContainer>
           )}
 
           {/* Floating tooltip */}
