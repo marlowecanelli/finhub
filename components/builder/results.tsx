@@ -175,7 +175,7 @@ export function BuilderResults({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push("/portfolio")}
+            onClick={() => router.push(`/portfolio?id=${save.portfolioId}`)}
             className="text-[#10b981] hover:text-[#10b981]"
           >
             Open portfolio <ArrowRight className="h-3 w-3" />

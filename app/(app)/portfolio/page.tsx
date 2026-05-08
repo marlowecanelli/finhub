@@ -9,7 +9,7 @@ import { recordEvent } from "@/lib/achievements/engine";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-async function loadPortfolio(): Promise<
+async function loadPortfolio(portfolioId?: string): Promise<
   | { kind: "unauth" }
   | { kind: "unconfigured" }
   | { kind: "ok"; portfolio: Portfolio; holdings: Holding[] }
@@ -27,16 +27,31 @@ async function loadPortfolio(): Promise<
   } = await supabase.auth.getUser();
   if (!user) return { kind: "unauth" };
 
-  const { data: existing, error: selErr } = await supabase
-    .from("portfolios")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle<Portfolio>();
-  if (selErr) return { kind: "error", message: selErr.message };
+  let portfolio: Portfolio | null = null;
 
-  let portfolio = existing;
+  if (portfolioId) {
+    const { data, error } = await supabase
+      .from("portfolios")
+      .select("*")
+      .eq("id", portfolioId)
+      .eq("user_id", user.id)
+      .maybeSingle<Portfolio>();
+    if (error) return { kind: "error", message: error.message };
+    portfolio = data;
+  }
+
+  if (!portfolio) {
+    const { data: existing, error: selErr } = await supabase
+      .from("portfolios")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle<Portfolio>();
+    if (selErr) return { kind: "error", message: selErr.message };
+    portfolio = existing;
+  }
+
   if (!portfolio) {
     const { data: created, error: insErr } = await supabase
       .from("portfolios")
@@ -62,8 +77,13 @@ async function loadPortfolio(): Promise<
   return { kind: "ok", portfolio, holdings: (holdings ?? []) as Holding[] };
 }
 
-export default async function PortfolioPage() {
-  const result = await loadPortfolio();
+export default async function PortfolioPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ id?: string }>;
+}) {
+  const { id } = await searchParams;
+  const result = await loadPortfolio(id);
 
   if (result.kind === "unconfigured") {
     return <SetupNotice />;
