@@ -1,4 +1,5 @@
 import { type LucideIcon } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -8,6 +9,7 @@ type Props = {
   changePct: number;
   icon: LucideIcon;
   accent: string;
+  href?: string;
 };
 
 export function MarketCard({
@@ -16,12 +18,13 @@ export function MarketCard({
   value,
   changePct,
   icon: Icon,
+  href,
 }: Props) {
   const up = changePct >= 0;
   const colorVar = up ? "hsl(var(--signal))" : "hsl(348 95% 65%)";
 
-  return (
-    <div className="card-edge group relative overflow-hidden rounded-xl border border-border/80 bg-card/40 p-6 backdrop-blur-xl lift">
+  const inner = (
+    <div className={cn("card-edge group relative overflow-hidden rounded-xl border border-border/80 bg-card/40 p-6 backdrop-blur-xl lift", href && "cursor-pointer")}>
       {/* Hover glow */}
       <div
         aria-hidden
@@ -67,6 +70,15 @@ export function MarketCard({
       </div>
     </div>
   );
+
+  if (href) {
+    return (
+      <Link href={href} className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-xl">
+        {inner}
+      </Link>
+    );
+  }
+  return inner;
 }
 
 function Sparkline({ up, color }: { up: boolean; color: string }) {

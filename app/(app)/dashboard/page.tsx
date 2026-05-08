@@ -23,6 +23,7 @@ type MarketEntry = {
   changePct: number;
   icon: LucideIcon;
   accent: string;
+  href?: string;
 };
 
 const MARKET_CONFIG: Omit<MarketEntry, "value" | "changePct">[] = [
@@ -32,6 +33,7 @@ const MARKET_CONFIG: Omit<MarketEntry, "value" | "changePct">[] = [
     ySymbol: "^GSPC",
     icon: TrendingUp,
     accent: "",
+    href: "/market-map?index=sp500",
   },
   {
     label: "Nasdaq",
@@ -39,6 +41,7 @@ const MARKET_CONFIG: Omit<MarketEntry, "value" | "changePct">[] = [
     ySymbol: "^IXIC",
     icon: LineChart,
     accent: "",
+    href: "/market-map?index=nasdaq100",
   },
   {
     label: "Dow Jones",
@@ -46,6 +49,7 @@ const MARKET_CONFIG: Omit<MarketEntry, "value" | "changePct">[] = [
     ySymbol: "^DJI",
     icon: TrendingUp,
     accent: "",
+    href: "/market-map?index=dow30",
   },
   {
     label: "Bitcoin",
@@ -53,6 +57,7 @@ const MARKET_CONFIG: Omit<MarketEntry, "value" | "changePct">[] = [
     ySymbol: "BTC-USD",
     icon: Bitcoin,
     accent: "",
+    href: "/ticker/BTC-USD",
   },
 ];
 
@@ -188,6 +193,7 @@ export default function DashboardPage() {
                   changePct={m.changePct}
                   icon={m.icon}
                   accent={m.accent}
+                  href={m.href}
                 />
               </div>
             ))}
