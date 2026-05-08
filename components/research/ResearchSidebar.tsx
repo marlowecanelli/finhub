@@ -40,6 +40,18 @@ export function ResearchSidebar() {
       )}
       style={{ background: "#0D0F14", borderColor: "#1E2130", minHeight: "100vh" }}
     >
+      {/* Back to FinHub */}
+      <div className="border-b px-3 py-2.5" style={{ borderColor: "#1E2130" }}>
+        <Link
+          href="/dashboard"
+          title={collapsed ? "Back to FinHub" : undefined}
+          className="flex items-center gap-3 rounded-sm px-2 py-2 text-[11px] font-medium text-[#717A94] hover:text-[#C8D0E7] transition-colors hover:bg-[#1E2130]"
+        >
+          <LayoutDashboard size={14} className="flex-shrink-0" />
+          {!collapsed && <span className="truncate">Back to FinHub</span>}
+        </Link>
+      </div>
+
       {/* Logo / Title */}
       <div
         className="flex items-center gap-2.5 px-3 py-4 border-b"
@@ -118,18 +130,6 @@ export function ResearchSidebar() {
           );
         })}
       </nav>
-
-      {/* Back to FinHub */}
-      <div className="border-t px-3 py-2.5" style={{ borderColor: "#1E2130" }}>
-        <Link
-          href="/dashboard"
-          title={collapsed ? "Back to FinHub" : undefined}
-          className="flex items-center gap-3 rounded-sm px-2 py-2 text-[11px] font-medium text-[#717A94] hover:text-[#C8D0E7] transition-colors hover:bg-[#1E2130]"
-        >
-          <LayoutDashboard size={14} className="flex-shrink-0" />
-          {!collapsed && <span className="truncate">Back to FinHub</span>}
-        </Link>
-      </div>
 
       {/* Collapse toggle */}
       <div className="border-t p-2" style={{ borderColor: "#1E2130" }}>
