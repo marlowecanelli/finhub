@@ -120,7 +120,7 @@ export function MarketMapClient({ initialIndex }: { initialIndex: string }) {
   const losers = cells.filter((c) => c.changePct < 0).length;
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="flex flex-col bg-background">
       {/* ── Header ── */}
       <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-[1600px] items-center gap-4 px-4 py-3 md:px-8">
@@ -159,7 +159,7 @@ export function MarketMapClient({ initialIndex }: { initialIndex: string }) {
         </div>
       </header>
 
-      <div className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-4 px-4 py-5 md:px-8">
+      <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-4 px-4 py-5 md:px-8">
         {/* ── Controls row ── */}
         <div className="flex flex-wrap items-center justify-between gap-4">
           {/* Index tabs */}
@@ -196,8 +196,8 @@ export function MarketMapClient({ initialIndex }: { initialIndex: string }) {
         {/* ── Treemap ── */}
         <div
           ref={containerRef}
-          className="relative flex-1 overflow-hidden rounded-2xl border border-border/60 bg-[#070b12]"
-          style={{ minHeight: "calc(100vh - 240px)" }}
+          className="relative overflow-hidden rounded-2xl border border-border/60 bg-[#070b12]"
+          style={{ height: "calc(100vh - 220px)", minHeight: 500 }}
           onMouseMove={(e) => {
             mouseRef.current = { x: e.clientX, y: e.clientY };
           }}
