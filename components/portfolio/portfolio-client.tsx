@@ -18,6 +18,7 @@ import { SectorDonut } from "./sector-donut";
 import { GainersLosers } from "./gainers-losers";
 import { HoldingsTable } from "./holdings-table";
 import { AnalyticsDashboard } from "./analytics/dashboard";
+import { AiAnalyst } from "./ai-analyst";
 import { HoldingFormDialog, type HoldingFormValues } from "./holding-form-dialog";
 import { DeleteConfirm } from "./delete-confirm";
 import { PortfolioEmpty } from "./empty-state";
@@ -234,6 +235,8 @@ export function PortfolioClient({ portfolio, initialHoldings }: Props) {
             }}
             onDelete={(h) => setDeleting(h)}
           />
+
+          <AiAnalyst enriched={enriched} totals={totals} />
 
           <AnalyticsDashboard positions={analyticsPositions} />
         </>
