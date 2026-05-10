@@ -7,6 +7,7 @@ import { AnimatedNumber } from "@/components/ticker/animated-number";
 import { Button } from "@/components/ui/button";
 import { cn, formatCurrency, formatPercent } from "@/lib/utils";
 import type { EnrichedHolding } from "@/lib/portfolio";
+import { TickerNote } from "@/components/shared/ticker-note";
 
 type SortField =
   | "ticker"
@@ -320,9 +321,10 @@ function DesktopTable({ rows, sortField, sortDir, onSort, onEdit, onDelete }: Ta
                 </td>
                 <td className="px-5 py-3 text-right">
                   <div
-                    className="inline-flex gap-1"
+                    className="inline-flex items-center gap-1"
                     onClick={(e) => e.stopPropagation()}
                   >
+                    <TickerNote ticker={r.ticker} />
                     <Button
                       variant="ghost"
                       size="icon"
@@ -401,7 +403,8 @@ function MobileCards({ rows, onEdit, onDelete }: Props) {
                 tone={dayUp ? "up" : "down"}
               />
             </div>
-            <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+              <TickerNote ticker={r.ticker} />
               <Button variant="ghost" size="sm" onClick={() => onEdit(r)}>
                 <Pencil className="h-3.5 w-3.5" /> Edit
               </Button>

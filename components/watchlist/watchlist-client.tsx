@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase";
 import { cn, formatCurrency, formatPercent } from "@/lib/utils";
 import type { LiveQuote } from "@/lib/portfolio";
 import type { WatchlistItem } from "@/lib/watchlist";
+import { TickerNote } from "@/components/shared/ticker-note";
 
 const REFRESH_MS = 60_000;
 
@@ -113,18 +114,21 @@ export function WatchlistClient({ initialItems }: Props) {
                       {q?.name ?? "—"}
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      void remove(it);
-                    }}
-                    aria-label={`Remove ${it.ticker}`}
-                    className="rounded-md p-1 text-muted-foreground opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
+                  <div className="flex items-center gap-0.5">
+                    <TickerNote ticker={it.ticker} />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        void remove(it);
+                      }}
+                      aria-label={`Remove ${it.ticker}`}
+                      className="rounded-md p-1 text-muted-foreground opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
                 <div className="flex items-end justify-between">
                   <div className="font-mono text-xl font-semibold">
