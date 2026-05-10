@@ -13,7 +13,16 @@ export function getGemini(): GoogleGenAI {
 }
 
 export function extractJson(text: string): unknown {
+  // Try fenced code block first
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const raw = fenced?.[1]?.trim() ?? text.trim();
-  return JSON.parse(raw);
+  if (fenced?.[1]) {
+    try { return JSON.parse(fenced[1].trim()); } catch {}
+  }
+  // Try to find a JSON object anywhere in the text
+  const objMatch = text.match(/(\{[\s\S]*\})/);
+  if (objMatch?.[1]) {
+    try { return JSON.parse(objMatch[1]); } catch {}
+  }
+  // Fall back to raw text
+  return JSON.parse(text.trim());
 }
