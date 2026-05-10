@@ -27,7 +27,7 @@ ${listing}`;
     const result = await getGemini().models.generateContent({
       model: GEMINI_MODEL,
       contents: prompt,
-      config: { maxOutputTokens: 1200, temperature: 0.2 },
+      config: { maxOutputTokens: 1200, temperature: 0.2, responseMimeType: "application/json" },
     });
     const text = result.text ?? "";
     const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/i);

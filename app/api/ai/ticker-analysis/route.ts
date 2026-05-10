@@ -180,7 +180,7 @@ ${JSON.stringify(context, null, 2)}`;
     const result = await getGemini().models.generateContent({
       model: GEMINI_MODEL,
       contents: userPrompt,
-      config: { systemInstruction: system, maxOutputTokens: 900, temperature: 0.3 },
+      config: { systemInstruction: system, maxOutputTokens: 900, temperature: 0.3, responseMimeType: "application/json" },
     });
     text = result.text ?? "";
   } catch (err) {

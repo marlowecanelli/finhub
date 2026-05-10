@@ -60,6 +60,7 @@ ${items
     config: {
       maxOutputTokens: Math.min(4000, 200 * items.length + 200),
       temperature: 0.2,
+      responseMimeType: "application/json",
     },
   });
   const text = result.text ?? "";
