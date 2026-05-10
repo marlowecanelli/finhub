@@ -193,7 +193,7 @@ ${JSON.stringify(context, null, 2)}`;
     parsed = extractJson(text);
   } catch {
     return NextResponse.json(
-      { error: "AI returned malformed JSON" },
+      { error: "AI returned malformed JSON", raw: text.slice(0, 500) },
       { status: 502 }
     );
   }
