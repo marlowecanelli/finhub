@@ -39,6 +39,13 @@ export type MarketRecap = {
   generated_at: string;
 };
 
+/** Lightweight summary used for the archive index (no paragraph text). */
+export type RecapSummary = {
+  recap_date: string;
+  headline: string;
+  sp_change_pct: number | null; // extracted from indices_data[0] (^GSPC)
+};
+
 // ---------------------------------------------------------------------------
 // Static config
 // ---------------------------------------------------------------------------
@@ -173,4 +180,30 @@ export async function getRecapByDate(
     .maybeSingle();
   if (error || !data) return null;
   return data as MarketRecap;
+}
+
+/** Returns lightweight summaries for the past 30 calendar days, newest first. */
+export async function getArchive(supabase: SupabaseClient): Promise<RecapSummary[]> {
+  const since = new Date();
+  since.setDate(since.getDate() - 31);
+  const sinceStr = since.toISOString().slice(0, 10);
+
+  const { data, error } = await supabase
+    .from("market_recaps")
+    .select("recap_date, headline, indices_data")
+    .gte("recap_date", sinceStr)
+    .order("recap_date", { ascending: false });
+
+  if (error || !data) return [];
+
+  return (data as { recap_date: string; headline: string; indices_data: IndexSnapshot[] }[]).map(
+    (row) => {
+      const sp = row.indices_data?.find?.((i) => i.symbol === "^GSPC");
+      return {
+        recap_date: row.recap_date,
+        headline: row.headline,
+        sp_change_pct: sp?.changePct ?? null,
+      };
+    }
+  );
 }
