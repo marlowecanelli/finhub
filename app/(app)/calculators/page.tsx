@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Coins, FlaskConical, Landmark, Ruler, Target, TrendingUp } from "lucide-react";
+import { ArrowRight, Coins, FlaskConical, Landmark, Ruler, Target, TrendingUp, Crosshair } from "lucide-react";
 
 const CALCULATORS = [
   {
@@ -57,6 +57,14 @@ const CALCULATORS = [
       "Units and revenue needed to cover fixed and variable costs.",
     icon: Target,
     accent: "from-amber-500/30 to-transparent text-amber-500 ring-amber-500/30",
+  },
+  {
+    href: "/calculators/goal-savings",
+    title: "Goal savings",
+    description:
+      "I want $X in Y years — find the monthly investment and track milestone progress.",
+    icon: Crosshair,
+    accent: "from-rose-500/30 to-transparent text-rose-400 ring-rose-500/30",
   },
 ] as const;
 
