@@ -180,7 +180,7 @@ ${JSON.stringify(context, null, 2)}`;
     const result = await getGemini().models.generateContent({
       model: GEMINI_MODEL,
       contents: userPrompt,
-      config: { systemInstruction: system, maxOutputTokens: 900, temperature: 0.3, responseMimeType: "application/json" },
+      config: { systemInstruction: system, maxOutputTokens: 4096, temperature: 0.3, responseMimeType: "application/json", thinkingConfig: { thinkingBudget: 0 } },
     });
     text = result.text ?? "";
   } catch (err) {
@@ -193,7 +193,7 @@ ${JSON.stringify(context, null, 2)}`;
     parsed = extractJson(text);
   } catch {
     return NextResponse.json(
-      { error: "AI returned malformed JSON", raw: text.slice(0, 500) },
+      { error: "AI returned malformed JSON" },
       { status: 502 }
     );
   }

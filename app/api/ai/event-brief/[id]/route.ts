@@ -39,7 +39,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     const result = await getGemini().models.generateContent({
       model: GEMINI_MODEL,
       contents: `Why does this matter?\n${JSON.stringify(ctx)}`,
-      config: { systemInstruction: SYSTEM, maxOutputTokens: 220, temperature: 0.3 },
+      config: { systemInstruction: SYSTEM, maxOutputTokens: 512, temperature: 0.3, thinkingConfig: { thinkingBudget: 0 } },
     });
     text = (result.text ?? "").trim();
   } catch (err) {

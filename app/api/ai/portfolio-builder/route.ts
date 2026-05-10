@@ -40,7 +40,7 @@ Respond ONLY with a single JSON object. No markdown, no prose, no fences. Ticker
     const result = await getGemini().models.generateContent({
       model: GEMINI_MODEL,
       contents: buildPrompt(answers),
-      config: { systemInstruction: system, maxOutputTokens: 1500, temperature: 0.4, responseMimeType: "application/json" },
+      config: { systemInstruction: system, maxOutputTokens: 4096, temperature: 0.4, responseMimeType: "application/json", thinkingConfig: { thinkingBudget: 0 } },
     });
     text = result.text ?? "";
   } catch (err) {
