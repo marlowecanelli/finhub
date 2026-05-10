@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
-import { CLAUDE_MODEL, getAnthropic } from "@/lib/anthropic";
+import { GEMINI_MODEL, getGemini } from "@/lib/gemini";
 import {
   fetchMarketSnapshot,
   type IndexSnapshot,
@@ -78,23 +78,20 @@ export async function GET(request: NextRequest) {
 
   const admin = getSupabaseAdmin();
   if (!admin) return NextResponse.json({ error: "admin unavailable" }, { status: 503 });
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json({ error: "ANTHROPIC_API_KEY not configured" }, { status: 503 });
+  if (!process.env.GOOGLE_AI_API_KEY) {
+    return NextResponse.json({ error: "GOOGLE_AI_API_KEY not configured" }, { status: 503 });
   }
 
-  // US market close date — use today in ET
   const todayET = new Date(
     new Date().toLocaleString("en-US", { timeZone: "America/New_York" })
   );
   const todayStr = todayET.toISOString().slice(0, 10);
 
-  // Skip weekends
   const dow = todayET.getDay();
   if (dow === 0 || dow === 6) {
     return NextResponse.json({ ok: true, skipped: "weekend" });
   }
 
-  // Idempotency check
   const { data: existing } = await admin
     .from("market_recaps")
     .select("id")
@@ -104,29 +101,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: true, skipped: "already_exists", date: todayStr });
   }
 
-  // Fetch live market data
   const { indices, sectors, topMovers } = await fetchMarketSnapshot();
   const context = buildContext(todayStr, indices, sectors, topMovers);
 
-  // Generate with Claude
-  const res = await getAnthropic().messages.create({
-    model: CLAUDE_MODEL,
-    max_tokens: 1200,
-    temperature: 0.6,
-    system: SYSTEM,
-    messages: [
-      {
-        role: "user",
-        content: `${PARAGRAPH_PROMPT}\n\nMarket data:\n${context}`,
-      },
-    ],
+  const result = await getGemini().models.generateContent({
+    model: GEMINI_MODEL,
+    contents: `${PARAGRAPH_PROMPT}\n\nMarket data:\n${context}`,
+    config: { systemInstruction: SYSTEM, maxOutputTokens: 1200, temperature: 0.6 },
   });
-
-  const raw = res.content
-    .filter((b): b is Extract<typeof b, { type: "text" }> => b.type === "text")
-    .map((b) => b.text)
-    .join("")
-    .trim();
+  const raw = (result.text ?? "").trim();
 
   let parsed: {
     headline: string;
@@ -136,7 +119,6 @@ export async function GET(request: NextRequest) {
   };
 
   try {
-    // Strip optional code fences
     const clean = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "").trim();
     parsed = JSON.parse(clean);
   } catch {

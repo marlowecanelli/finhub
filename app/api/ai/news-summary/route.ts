@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { CLAUDE_MODEL, extractJson, getAnthropic } from "@/lib/anthropic";
+import { GEMINI_MODEL, extractJson, getGemini } from "@/lib/gemini";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 
 export const runtime = "nodejs";
@@ -43,7 +43,6 @@ async function writeCache(entries: { url: string; summary: string }[]) {
 
 async function summarizeBatch(items: Input[]): Promise<Record<string, string>> {
   if (items.length === 0) return {};
-  const client = getAnthropic();
   const prompt = `Write a single neutral, factual sentence (<=22 words) summarizing each article. Use the headline and description.
 Return JSON ONLY: { "items": [{ "url": "...", "summary": "..." }] }. No markdown.
 
@@ -55,16 +54,15 @@ ${items
   )
   .join("\n\n")}`;
 
-  const resp = await client.messages.create({
-    model: CLAUDE_MODEL,
-    max_tokens: Math.min(4000, 200 * items.length + 200),
-    temperature: 0.2,
-    messages: [{ role: "user", content: prompt }],
+  const result = await getGemini().models.generateContent({
+    model: GEMINI_MODEL,
+    contents: prompt,
+    config: {
+      maxOutputTokens: Math.min(4000, 200 * items.length + 200),
+      temperature: 0.2,
+    },
   });
-  const text = resp.content
-    .filter((b): b is Extract<typeof b, { type: "text" }> => b.type === "text")
-    .map((b) => b.text)
-    .join("");
+  const text = result.text ?? "";
 
   const out: Record<string, string> = {};
   try {
@@ -90,13 +88,11 @@ export async function POST(req: Request) {
   );
   if (articles.length === 0) return NextResponse.json({ summaries: {} });
 
-  // Read cache first.
   const cached = await readCache(articles.map((a) => a.url));
   const need = articles.filter((a) => !cached[a.url]);
 
   let fresh: Record<string, string> = {};
-  if (need.length > 0 && process.env.ANTHROPIC_API_KEY) {
-    // Batch in chunks of 12 to keep prompts focused.
+  if (need.length > 0 && process.env.GOOGLE_AI_API_KEY) {
     const chunkSize = 12;
     for (let i = 0; i < need.length; i += chunkSize) {
       const chunk = need.slice(i, i + chunkSize);

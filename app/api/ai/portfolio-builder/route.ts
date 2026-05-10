@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { CLAUDE_MODEL, extractJson, getAnthropic } from "@/lib/anthropic";
+import { GEMINI_MODEL, extractJson, getGemini } from "@/lib/gemini";
 import {
   buildPrompt,
   isComplete,
@@ -25,37 +25,30 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!process.env.GOOGLE_AI_API_KEY) {
     return NextResponse.json(
-      { error: "ANTHROPIC_API_KEY not configured" },
+      { error: "GOOGLE_AI_API_KEY not configured" },
       { status: 503 }
     );
   }
 
-  const client = getAnthropic();
   const system = `You are a portfolio construction assistant generating educational sample allocations.
 Respond ONLY with a single JSON object. No markdown, no prose, no fences. Tickers must be real US-listed instruments.`;
 
-  let resp;
+  let text: string;
   try {
-    resp = await client.messages.create({
-      model: CLAUDE_MODEL,
-      max_tokens: 1500,
-      temperature: 0.4,
-      system,
-      messages: [{ role: "user", content: buildPrompt(answers) }],
+    const result = await getGemini().models.generateContent({
+      model: GEMINI_MODEL,
+      contents: buildPrompt(answers),
+      config: { systemInstruction: system, maxOutputTokens: 1500, temperature: 0.4 },
     });
+    text = result.text ?? "";
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Anthropic error" },
+      { error: err instanceof Error ? err.message : "Gemini error" },
       { status: 502 }
     );
   }
-
-  const text = resp.content
-    .filter((b): b is Extract<typeof b, { type: "text" }> => b.type === "text")
-    .map((b) => b.text)
-    .join("");
 
   let parsed: unknown;
   try {

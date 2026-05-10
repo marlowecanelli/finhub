@@ -1,4 +1,4 @@
-import { getAnthropic, CLAUDE_MODEL } from "@/lib/anthropic";
+import { GEMINI_MODEL, getGemini } from "@/lib/gemini";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -31,30 +31,21 @@ Paragraph 3: what this teaches about their current portfolio composition.
 
 Be direct, not preachy. Use no em dashes. Use commas, parentheses, periods, or "to" for ranges instead.`;
 
-  let client;
-  try {
-    client = getAnthropic();
-  } catch {
-    return new Response("Anthropic API not configured", { status: 503 });
+  if (!process.env.GOOGLE_AI_API_KEY) {
+    return new Response("GOOGLE_AI_API_KEY not configured", { status: 503 });
   }
-
-  const stream = await client.messages.stream({
-    model: CLAUDE_MODEL,
-    max_tokens: 800,
-    messages: [{ role: "user", content: prompt }],
-  });
 
   const encoder = new TextEncoder();
   const readable = new ReadableStream({
     async start(controller) {
       try {
-        for await (const event of stream) {
-          if (
-            event.type === "content_block_delta" &&
-            event.delta.type === "text_delta"
-          ) {
-            controller.enqueue(encoder.encode(event.delta.text));
-          }
+        const stream = await getGemini().models.generateContentStream({
+          model: GEMINI_MODEL,
+          contents: prompt,
+          config: { maxOutputTokens: 800, temperature: 0.7 },
+        });
+        for await (const chunk of stream) {
+          controller.enqueue(encoder.encode(chunk.text ?? ""));
         }
       } catch (err) {
         controller.enqueue(

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerSupabase } from "@/lib/supabase-server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
-import { CLAUDE_MODEL, getAnthropic } from "@/lib/anthropic";
+import { GEMINI_MODEL, getGemini } from "@/lib/gemini";
 import { getEventById } from "@/lib/calendar/repo";
 
 export const runtime = "nodejs";
@@ -20,8 +20,8 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ data: { content: event.ai_brief, cached: true } });
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json({ error: "ANTHROPIC_API_KEY not configured" }, { status: 503 });
+  if (!process.env.GOOGLE_AI_API_KEY) {
+    return NextResponse.json({ error: "GOOGLE_AI_API_KEY not configured" }, { status: 503 });
   }
 
   const ctx = {
@@ -34,27 +34,20 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     meta: event.metadata,
   };
 
-  let res;
+  let text: string;
   try {
-    res = await getAnthropic().messages.create({
-      model: CLAUDE_MODEL,
-      max_tokens: 220,
-      temperature: 0.3,
-      system: SYSTEM,
-      messages: [{ role: "user", content: `Why does this matter?\n${JSON.stringify(ctx)}` }],
+    const result = await getGemini().models.generateContent({
+      model: GEMINI_MODEL,
+      contents: `Why does this matter?\n${JSON.stringify(ctx)}`,
+      config: { systemInstruction: SYSTEM, maxOutputTokens: 220, temperature: 0.3 },
     });
+    text = (result.text ?? "").trim();
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "anthropic error" },
+      { error: err instanceof Error ? err.message : "gemini error" },
       { status: 502 }
     );
   }
-
-  const text = res.content
-    .filter((b): b is Extract<typeof b, { type: "text" }> => b.type === "text")
-    .map((b) => b.text)
-    .join("")
-    .trim();
 
   const admin = getSupabaseAdmin();
   if (admin) {

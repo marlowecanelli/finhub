@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { CLAUDE_MODEL, extractJson, getAnthropic } from "@/lib/anthropic";
+import { GEMINI_MODEL, extractJson, getGemini } from "@/lib/gemini";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
 import { getHistory, getTickerNews, getTickerSummary } from "@/lib/yahoo";
 import {
@@ -142,9 +142,9 @@ export async function POST(request: NextRequest) {
     if (cached) return NextResponse.json(cached);
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!process.env.GOOGLE_AI_API_KEY) {
     return NextResponse.json(
-      { error: "ANTHROPIC_API_KEY not configured" },
+      { error: "GOOGLE_AI_API_KEY not configured" },
       { status: 503 }
     );
   }
@@ -155,13 +155,6 @@ export async function POST(request: NextRequest) {
   } catch (err) {
     const message = err instanceof Error ? err.message : "Ticker not found";
     return NextResponse.json({ error: message }, { status: 404 });
-  }
-
-  let anthropic;
-  try {
-    anthropic = getAnthropic();
-  } catch {
-    return NextResponse.json({ error: "ANTHROPIC_API_KEY not configured" }, { status: 503 });
   }
 
   const system = `You are a dispassionate equity research assistant. Produce balanced, evidence-based analysis.
@@ -182,24 +175,18 @@ Return JSON with this exact shape:
 Context (JSON):
 ${JSON.stringify(context, null, 2)}`;
 
-  let res;
+  let text: string;
   try {
-    res = await anthropic.messages.create({
-      model: CLAUDE_MODEL,
-      max_tokens: 900,
-      temperature: 0.3,
-      system,
-      messages: [{ role: "user", content: userPrompt }],
+    const result = await getGemini().models.generateContent({
+      model: GEMINI_MODEL,
+      contents: userPrompt,
+      config: { systemInstruction: system, maxOutputTokens: 900, temperature: 0.3 },
     });
+    text = result.text ?? "";
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Anthropic API error";
+    const message = err instanceof Error ? err.message : "Gemini API error";
     return NextResponse.json({ error: message }, { status: 502 });
   }
-
-  const text = res.content
-    .filter((b): b is Extract<typeof b, { type: "text" }> => b.type === "text")
-    .map((b) => b.text)
-    .join("");
 
   let parsed: unknown;
   try {

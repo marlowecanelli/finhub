@@ -1,4 +1,4 @@
-import { getAnthropic, CLAUDE_HAIKU_MODEL } from "@/lib/anthropic";
+import { GEMINI_MODEL, getGemini } from "@/lib/gemini";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,7 +32,6 @@ function buildPrompt(body: Body): string {
     new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
   const fmtPct = (n: number) => `${n >= 0 ? "+" : ""}${fmt(n)}%`;
 
-  // Sector breakdown
   const sectorMap: Record<string, number> = {};
   for (const h of holdings) {
     const s = h.sector ?? "Unknown";
@@ -43,7 +42,6 @@ function buildPrompt(body: Body): string {
     .map(([s, v]) => `  • ${s}: ${fmt((v / totalValue) * 100)}%`)
     .join("\n");
 
-  // Holdings sorted by weight desc
   const holdingLines = [...holdings]
     .sort((a, b) => b.weight - a.weight)
     .map(
@@ -115,37 +113,23 @@ export async function POST(req: Request) {
     return new Response("No holdings provided", { status: 400 });
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return new Response("ANTHROPIC_API_KEY not configured", { status: 503 });
-  }
-
-  let client;
-  try {
-    client = getAnthropic();
-  } catch {
-    return new Response("Anthropic API not configured", { status: 503 });
+  if (!process.env.GOOGLE_AI_API_KEY) {
+    return new Response("GOOGLE_AI_API_KEY not configured", { status: 503 });
   }
 
   const prompt = buildPrompt(body);
-
-  const stream = await client.messages.stream({
-    model: CLAUDE_HAIKU_MODEL,
-    max_tokens: 1800,
-    temperature: 0.7,
-    messages: [{ role: "user", content: prompt }],
-  });
 
   const encoder = new TextEncoder();
   const readable = new ReadableStream({
     async start(controller) {
       try {
-        for await (const event of stream) {
-          if (
-            event.type === "content_block_delta" &&
-            event.delta.type === "text_delta"
-          ) {
-            controller.enqueue(encoder.encode(event.delta.text));
-          }
+        const stream = await getGemini().models.generateContentStream({
+          model: GEMINI_MODEL,
+          contents: prompt,
+          config: { maxOutputTokens: 1800, temperature: 0.7 },
+        });
+        for await (const chunk of stream) {
+          controller.enqueue(encoder.encode(chunk.text ?? ""));
         }
       } catch (err) {
         controller.enqueue(

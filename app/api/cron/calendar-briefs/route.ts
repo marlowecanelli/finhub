@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase-admin";
-import { CLAUDE_MODEL, getAnthropic } from "@/lib/anthropic";
+import { GEMINI_MODEL, getGemini } from "@/lib/gemini";
 import { getWatchlistTickers, listEvents } from "@/lib/calendar/repo";
 
 export const runtime = "nodejs";
@@ -23,8 +23,8 @@ export async function GET(request: NextRequest) {
 
   const admin = getSupabaseAdmin();
   if (!admin) return NextResponse.json({ error: "admin unavailable" }, { status: 503 });
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json({ error: "ANTHROPIC_API_KEY not configured" }, { status: 503 });
+  if (!process.env.GOOGLE_AI_API_KEY) {
+    return NextResponse.json({ error: "GOOGLE_AI_API_KEY not configured" }, { status: 503 });
   }
 
   const { data: rows } = await admin
@@ -74,18 +74,12 @@ export async function GET(request: NextRequest) {
     };
 
     try {
-      const res = await getAnthropic().messages.create({
-        model: CLAUDE_MODEL,
-        max_tokens: 800,
-        temperature: 0.4,
-        system: SYSTEM,
-        messages: [{ role: "user", content: `Write today's brief.\n\nContext (JSON):\n${JSON.stringify(ctx)}` }],
+      const result = await getGemini().models.generateContent({
+        model: GEMINI_MODEL,
+        contents: `Write today's brief.\n\nContext (JSON):\n${JSON.stringify(ctx)}`,
+        config: { systemInstruction: SYSTEM, maxOutputTokens: 800, temperature: 0.4 },
       });
-      const text = res.content
-        .filter((b): b is Extract<typeof b, { type: "text" }> => b.type === "text")
-        .map((b) => b.text)
-        .join("")
-        .trim();
+      const text = (result.text ?? "").trim();
       await admin.from("calendar_briefs").upsert(
         { user_id: userId, brief_date: todayStr, content: text },
         { onConflict: "user_id,brief_date" }

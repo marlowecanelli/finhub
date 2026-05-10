@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getAnthropic, CLAUDE_MODEL } from "@/lib/anthropic";
+import { getGemini, GEMINI_MODEL } from "@/lib/gemini";
 import { getTickerNews, type TickerNewsItem } from "@/lib/yahoo";
 
 export const runtime = "nodejs";
@@ -10,7 +10,7 @@ async function summarizeHeadlines(
   symbol: string,
   items: TickerNewsItem[]
 ): Promise<Record<string, string>> {
-  if (!process.env.ANTHROPIC_API_KEY || items.length === 0) return {};
+  if (!process.env.GOOGLE_AI_API_KEY || items.length === 0) return {};
 
   const listing = items
     .map((n, i) => `${i + 1}. [${n.uuid}] ${n.title}`)
@@ -24,17 +24,12 @@ Headlines:
 ${listing}`;
 
   try {
-    const anthropic = getAnthropic();
-    const res = await anthropic.messages.create({
-      model: CLAUDE_MODEL,
-      max_tokens: 1200,
-      temperature: 0.2,
-      messages: [{ role: "user", content: prompt }],
+    const result = await getGemini().models.generateContent({
+      model: GEMINI_MODEL,
+      contents: prompt,
+      config: { maxOutputTokens: 1200, temperature: 0.2 },
     });
-    const text = res.content
-      .filter((b): b is Extract<typeof b, { type: "text" }> => b.type === "text")
-      .map((b) => b.text)
-      .join("");
+    const text = result.text ?? "";
     const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
     const raw = fence?.[1]?.trim() ?? text.trim();
     const parsed = JSON.parse(raw) as Record<string, string>;
