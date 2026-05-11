@@ -14,10 +14,7 @@ export async function GET(
       {
         price: q.regularMarketPrice ?? null,
         change: q.regularMarketChange ?? null,
-        changePercent:
-          q.regularMarketChangePercent != null
-            ? q.regularMarketChangePercent * 100
-            : null,
+        changePercent: q.regularMarketChangePercent ?? null,
         marketState: q.marketState ?? null,
       },
       { headers: { "Cache-Control": "no-store" } }
