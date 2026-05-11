@@ -497,7 +497,7 @@ export function BuilderWizard() {
               {submitting && (
                 <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-card/40 p-3 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                  Asking AI for a tailored allocation…
+                  Generating your portfolio…
                 </div>
               )}
 
