@@ -4,18 +4,23 @@ import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertTriangle,
+  Banknote,
   Briefcase,
+  Building2,
   Globe,
   GraduationCap,
   Hammer,
   Home,
   Leaf,
   Loader2,
+  MessageSquarePlus,
   Mountain,
   PiggyBank,
   Rocket,
   Sparkles,
   Star,
+  TrendingDown,
+  TrendingUp,
   Wallet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -27,6 +32,7 @@ import {
   type Experience,
   type Goal,
   type Horizon,
+  type TaxAccount,
 } from "@/lib/builder";
 import { CalcInput } from "@/components/calculators/calc-input";
 import { OptionCard } from "./option-card";
@@ -35,8 +41,8 @@ import { StepShell } from "./step-shell";
 import { BuilderResults } from "./results";
 import { emitEvent } from "@/lib/achievements/client";
 
-const STORAGE_KEY = "finhub-builder-answers";
-const TOTAL_STEPS = 7;
+const STORAGE_KEY = "finhub-builder-answers-v2";
+const TOTAL_STEPS = 9;
 
 const GOAL_OPTIONS: { key: Goal; title: string; description: string; icon: typeof Home }[] = [
   { key: "retirement", title: "Retirement", description: "Long-horizon nest egg.", icon: Mountain },
@@ -57,6 +63,13 @@ const EXPERIENCE_OPTIONS: { key: Experience; title: string; description: string;
   { key: "advanced", title: "Advanced", description: "Trade individual stocks regularly.", icon: Sparkles },
 ];
 
+const TAX_OPTIONS: { key: TaxAccount; title: string; description: string; icon: typeof Wallet }[] = [
+  { key: "taxable", title: "Taxable Brokerage", description: "Standard account, capital gains taxed.", icon: Banknote },
+  { key: "ira", title: "Traditional IRA", description: "Tax-deferred growth, taxed on withdrawal.", icon: PiggyBank },
+  { key: "roth", title: "Roth IRA", description: "After-tax contributions, tax-free growth.", icon: TrendingUp },
+  { key: "401k", title: "401(k)", description: "Employer-sponsored, pre-tax contributions.", icon: Building2 },
+];
+
 const PREF_OPTIONS: {
   key: keyof BuilderAnswers["preferences"];
   title: string;
@@ -64,10 +77,33 @@ const PREF_OPTIONS: {
   icon: typeof Leaf;
 }[] = [
   { key: "esg", title: "ESG", description: "Sustainability-focused funds.", icon: Leaf },
-  { key: "dividend", title: "Dividend-focused", description: "Income-paying equities.", icon: PiggyBank },
-  { key: "growth", title: "Growth-focused", description: "Higher-growth tech and innovation.", icon: Rocket },
+  { key: "dividend", title: "Dividend Income", description: "Income-paying equities.", icon: PiggyBank },
+  { key: "growth", title: "Growth", description: "Higher-growth tech & innovation.", icon: TrendingUp },
+  { key: "value", title: "Value", description: "Undervalued companies at a discount.", icon: TrendingDown },
   { key: "international", title: "International", description: "Exposure outside the US.", icon: Globe },
-  { key: "crypto", title: "Crypto exposure", description: "Bitcoin / crypto ETFs.", icon: Sparkles },
+  { key: "smallCap", title: "Small Cap", description: "Higher growth, higher volatility.", icon: Sparkles },
+  { key: "realEstate", title: "Real Estate (REITs)", description: "Inflation hedge & income.", icon: Building2 },
+  { key: "crypto", title: "Crypto Exposure", description: "Bitcoin / crypto ETFs.", icon: Sparkles },
+];
+
+const STEP_LABELS = [
+  "Goal",
+  "Horizon",
+  "Risk",
+  "Capital",
+  "Monthly",
+  "Preferences",
+  "Tax Account",
+  "Experience",
+  "Details",
+];
+
+const CONTEXT_EXAMPLES = [
+  "I already own Apple stock and want to avoid too much tech exposure.",
+  "I'm self-employed with variable income — keep things simple.",
+  "I want to focus on dividend income to supplement my salary.",
+  "I'd prefer to exclude defense and fossil fuel companies.",
+  "I'm close to retirement and want to reduce volatility soon.",
 ];
 
 export function BuilderWizard() {
@@ -77,6 +113,7 @@ export function BuilderWizard() {
   const [recommendation, setRecommendation] =
     React.useState<BuilderRecommendation | null>(null);
   const [error, setError] = React.useState<string | null>(null);
+  const [contextPlaceholder, setContextPlaceholder] = React.useState(CONTEXT_EXAMPLES[0]);
 
   // Hydrate from localStorage.
   React.useEffect(() => {
@@ -100,6 +137,14 @@ export function BuilderWizard() {
     }
   }, [answers]);
 
+  // Rotate placeholder examples.
+  React.useEffect(() => {
+    const id = setInterval(() => {
+      setContextPlaceholder(CONTEXT_EXAMPLES[Math.floor(Math.random() * CONTEXT_EXAMPLES.length)]);
+    }, 4000);
+    return () => clearInterval(id);
+  }, []);
+
   function update<K extends keyof BuilderAnswers>(key: K, value: BuilderAnswers[K]) {
     setAnswers((p) => ({ ...p, [key]: value }));
   }
@@ -111,11 +156,13 @@ export function BuilderWizard() {
       case 3: return answers.riskLevel >= 1 && answers.riskLevel <= 5;
       case 4: return answers.initialInvestment > 0;
       case 5: return answers.monthlyContribution >= 0;
-      case 6: return true; // optional
-      case 7: return answers.experience != null;
+      case 6: return true; // preferences — optional
+      case 7: return answers.taxAccount != null;
+      case 8: return answers.experience != null;
+      case 9: return !submitting; // custom context — optional
       default: return false;
     }
-  }, [step, answers]);
+  }, [step, answers, submitting]);
 
   async function generate() {
     if (!isComplete(answers)) return;
@@ -144,7 +191,6 @@ export function BuilderWizard() {
     setStep(1);
   }
 
-  // Results screen takes over when we have a recommendation.
   if (recommendation) {
     return (
       <BuilderResults
@@ -179,7 +225,10 @@ export function BuilderWizard() {
         </div>
       </header>
 
-      <ProgressBar step={step} total={TOTAL_STEPS} />
+      <ProgressBar step={step} total={TOTAL_STEPS} labels={STEP_LABELS} onJump={(s) => {
+        // only allow jumping to already-completed steps
+        if (s < step) setStep(s);
+      }} />
 
       <AnimatePresence mode="wait">
         {step === 1 && (
@@ -213,7 +262,7 @@ export function BuilderWizard() {
             step={2}
             total={TOTAL_STEPS}
             title="What's your time horizon?"
-            subtitle="Longer horizons can absorb more volatility."
+            subtitle="Longer horizons can absorb more volatility and unlock higher-growth allocations."
             canBack
             canNext={stepValid}
             onBack={() => setStep(1)}
@@ -282,7 +331,7 @@ export function BuilderWizard() {
             step={5}
             total={TOTAL_STEPS}
             title="Monthly contribution"
-            subtitle="Regular deposits compound over time."
+            subtitle="Regular deposits compound significantly over time."
             canBack
             canNext={stepValid}
             onBack={() => setStep(4)}
@@ -307,14 +356,14 @@ export function BuilderWizard() {
           <StepShell
             step={6}
             total={TOTAL_STEPS}
-            title="Any preferences?"
-            subtitle="Optional — pick any that apply."
+            title="Any investment preferences?"
+            subtitle="Optional — pick any that apply. These shape ETF and sector selection."
             canBack
             canNext
             onBack={() => setStep(5)}
             onNext={() => setStep(7)}
           >
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {PREF_OPTIONS.map((o) => (
                 <OptionCard
                   key={o.key}
@@ -331,6 +380,16 @@ export function BuilderWizard() {
                 />
               ))}
             </div>
+            {Object.values(answers.preferences).some(Boolean) && (
+              <motion.p
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-3 text-xs text-primary"
+              >
+                {Object.values(answers.preferences).filter(Boolean).length} preference
+                {Object.values(answers.preferences).filter(Boolean).length > 1 ? "s" : ""} selected
+              </motion.p>
+            )}
           </StepShell>
         )}
 
@@ -338,13 +397,38 @@ export function BuilderWizard() {
           <StepShell
             step={7}
             total={TOTAL_STEPS}
-            title="What's your experience level?"
-            subtitle="We tune the recommendation accordingly."
+            title="Where will you hold this portfolio?"
+            subtitle="Account type affects which funds are most tax-efficient for you."
             canBack
-            canNext={stepValid && !submitting}
-            nextLabel={submitting ? "Generating…" : "Generate recommendation"}
+            canNext={stepValid}
             onBack={() => setStep(6)}
-            onNext={() => void generate()}
+            onNext={() => setStep(8)}
+          >
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {TAX_OPTIONS.map((o) => (
+                <OptionCard
+                  key={o.key}
+                  icon={o.icon}
+                  title={o.title}
+                  description={o.description}
+                  selected={answers.taxAccount === o.key}
+                  onClick={() => update("taxAccount", o.key)}
+                />
+              ))}
+            </div>
+          </StepShell>
+        )}
+
+        {step === 8 && (
+          <StepShell
+            step={8}
+            total={TOTAL_STEPS}
+            title="What's your experience level?"
+            subtitle="We tune the complexity and number of holdings accordingly."
+            canBack
+            canNext={stepValid}
+            onBack={() => setStep(7)}
+            onNext={() => setStep(9)}
           >
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               {EXPERIENCE_OPTIONS.map((o) => (
@@ -358,20 +442,72 @@ export function BuilderWizard() {
                 />
               ))}
             </div>
+          </StepShell>
+        )}
 
-            {submitting && (
-              <div className="mt-6 flex items-center gap-2 rounded-xl border border-border/60 bg-card/40 p-3 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                Asking Claude for a tailored allocation…
+        {step === 9 && (
+          <StepShell
+            step={9}
+            total={TOTAL_STEPS}
+            title="Anything else you'd like to tell us?"
+            subtitle="Optional — describe constraints, goals, or preferences in your own words. The AI will honor them."
+            canBack
+            canNext={stepValid}
+            nextLabel={submitting ? "Generating…" : "Generate my portfolio"}
+            onBack={() => setStep(8)}
+            onNext={() => void generate()}
+          >
+            <div className="space-y-4">
+              <div className="glass overflow-hidden rounded-2xl">
+                <div className="flex items-center gap-2 border-b border-border/40 px-4 py-2.5">
+                  <MessageSquarePlus className="h-3.5 w-3.5 text-primary" />
+                  <span className="text-xs font-medium text-muted-foreground">Your custom instructions</span>
+                </div>
+                <textarea
+                  value={answers.customContext}
+                  onChange={(e) => update("customContext", e.target.value)}
+                  placeholder={contextPlaceholder}
+                  rows={5}
+                  maxLength={500}
+                  className="w-full resize-none bg-transparent px-4 py-3 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground/50 focus:outline-none"
+                />
+                <div className="flex items-center justify-between border-t border-border/40 px-4 py-2">
+                  <span className="text-[11px] text-muted-foreground">
+                    Examples: exclusions, sector focus, income needs, existing holdings
+                  </span>
+                  <span className="font-mono text-[11px] text-muted-foreground">
+                    {answers.customContext.length}/500
+                  </span>
+                </div>
               </div>
-            )}
 
-            {error && (
-              <div className="mt-6 flex items-start gap-2 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                <span>{error}</span>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {CONTEXT_EXAMPLES.slice(0, 4).map((ex) => (
+                  <button
+                    key={ex}
+                    type="button"
+                    onClick={() => update("customContext", ex)}
+                    className="rounded-xl border border-border/40 bg-card/30 px-3 py-2 text-left text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-foreground"
+                  >
+                    &ldquo;{ex}&rdquo;
+                  </button>
+                ))}
               </div>
-            )}
+
+              {submitting && (
+                <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-card/40 p-3 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  Asking AI for a tailored allocation…
+                </div>
+              )}
+
+              {error && (
+                <div className="flex items-start gap-2 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <span>{error}</span>
+                </div>
+              )}
+            </div>
           </StepShell>
         )}
       </AnimatePresence>
@@ -379,28 +515,51 @@ export function BuilderWizard() {
   );
 }
 
-function ProgressBar({ step, total }: { step: number; total: number }) {
+function ProgressBar({
+  step,
+  total,
+  labels,
+  onJump,
+}: {
+  step: number;
+  total: number;
+  labels: string[];
+  onJump: (s: number) => void;
+}) {
   return (
-    <div className="space-y-2">
-      <div className="flex h-1.5 gap-1">
+    <div className="space-y-3">
+      <div className="flex gap-1">
         {Array.from({ length: total }).map((_, i) => {
-          const done = i < step;
+          const done = i < step - 1;
           const active = i === step - 1;
           return (
-            <motion.div
+            <motion.button
               key={i}
+              type="button"
+              onClick={() => onJump(i + 1)}
+              disabled={i >= step - 1}
               animate={{
                 opacity: done || active ? 1 : 0.25,
-                scaleY: active ? 1.15 : 1,
+                scaleY: active ? 1.5 : 1,
               }}
-              transition={{ duration: 0.3 }}
+              transition={{ duration: 0.25 }}
+              title={labels[i]}
               className={cn(
-                "flex-1 origin-center rounded-full transition-colors",
-                done || active ? "bg-primary" : "bg-muted"
+                "h-1.5 flex-1 origin-center rounded-full transition-colors",
+                done ? "bg-primary/70 cursor-pointer" : active ? "bg-primary" : "bg-muted cursor-not-allowed"
               )}
             />
           );
         })}
+      </div>
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">
+          Step <span className="font-mono font-medium text-foreground">{step}</span> of {total} —{" "}
+          <span className="text-foreground/80">{labels[step - 1]}</span>
+        </p>
+        <p className="font-mono text-xs text-muted-foreground">
+          {Math.round(((step - 1) / total) * 100)}%
+        </p>
       </div>
     </div>
   );

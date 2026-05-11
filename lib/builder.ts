@@ -1,6 +1,7 @@
 export type Goal = "retirement" | "house" | "wealth" | "short-term";
 export type Horizon = "short" | "medium" | "long";
 export type Experience = "beginner" | "intermediate" | "advanced";
+export type TaxAccount = "taxable" | "ira" | "roth" | "401k";
 
 export type BuilderAnswers = {
   goal: Goal | null;
@@ -14,8 +15,13 @@ export type BuilderAnswers = {
     growth: boolean;
     international: boolean;
     crypto: boolean;
+    smallCap: boolean;
+    realEstate: boolean;
+    value: boolean;
   };
+  taxAccount: TaxAccount | null;
   experience: Experience | null;
+  customContext: string; // free-text additional context
 };
 
 export const DEFAULT_ANSWERS: BuilderAnswers = {
@@ -30,8 +36,13 @@ export const DEFAULT_ANSWERS: BuilderAnswers = {
     growth: false,
     international: false,
     crypto: false,
+    smallCap: false,
+    realEstate: false,
+    value: false,
   },
+  taxAccount: null,
   experience: null,
+  customContext: "",
 };
 
 export const RISK_LABELS = [
@@ -42,7 +53,6 @@ export const RISK_LABELS = [
   "Aggressive",
 ] as const;
 
-// Approximate historical drawdown ranges for typical balanced portfolios at each level.
 export const RISK_DRAWDOWNS = [
   { label: "Conservative", drawdown: "-5% to -10%", expected: "4–6%" },
   { label: "Moderate-Conservative", drawdown: "-10% to -20%", expected: "5–7%" },
@@ -72,6 +82,8 @@ export type BuilderRecommendation = {
   expected_return_range: { low: number; high: number };
   risk_assessment: string;
   rebalance_frequency: string;
+  portfolio_archetype: string; // e.g. "The Balanced Growth Investor"
+  archetype_description: string; // 1 sentence
   generated_at: string; // ISO
 };
 
@@ -86,12 +98,34 @@ export function isComplete(a: BuilderAnswers): boolean {
   );
 }
 
+export function horizonYears(h: Horizon | null): number {
+  switch (h) {
+    case "short": return 3;
+    case "medium": return 7;
+    case "long": return 20;
+    default: return 10;
+  }
+}
+
 export function buildPrompt(a: BuilderAnswers): string {
   const prefList = Object.entries(a.preferences)
     .filter(([, v]) => v)
     .map(([k]) => k)
     .join(", ") || "(none)";
   const aggressive = a.riskLevel >= 4;
+  const taxNote = a.taxAccount
+    ? `Tax account type: ${a.taxAccount}. ${
+        a.taxAccount === "taxable"
+          ? "Prefer tax-efficient funds (broad index ETFs, avoid high-turnover). Municipal bonds can help."
+          : a.taxAccount === "ira" || a.taxAccount === "roth"
+          ? "Tax-advantaged — REITs, high-yield bonds, and dividend payers are fine."
+          : "401k — only recommend broad-market index ETFs."
+      }`
+    : "Tax account: not specified.";
+
+  const customNote = a.customContext?.trim()
+    ? `\nUser additional context: "${a.customContext.trim()}". Honor any specific requests or constraints they mention.`
+    : "";
 
   return `You are an investment portfolio builder generating an educational sample allocation. The user provided this questionnaire:
 - Goal: ${a.goal}
@@ -100,7 +134,8 @@ export function buildPrompt(a: BuilderAnswers): string {
 - Initial investment: $${a.initialInvestment}
 - Monthly contribution: $${a.monthlyContribution}
 - Preferences: ${prefList}
-- Experience: ${a.experience}
+- ${taxNote}
+- Experience: ${a.experience}${customNote}
 
 Produce a portfolio recommendation. Respond ONLY with JSON, no markdown fences, no prose. Use this exact shape:
 
@@ -112,17 +147,21 @@ Produce a portfolio recommendation. Respond ONLY with JSON, no markdown fences, 
   "stock_picks": [${aggressive ? "...up to 4 individual stocks if aggressive" : ""}],
   "expected_return_range": { "low": <number>, "high": <number> },
   "risk_assessment": "<2-3 sentences in plain English>",
-  "rebalance_frequency": "<e.g. 'Quarterly' or 'Annually'>"
+  "rebalance_frequency": "<e.g. 'Quarterly' or 'Annually'>",
+  "portfolio_archetype": "<a creative 3-5 word label like 'The Steady Growth Builder' or 'The Aggressive Wealth Seeker'>",
+  "archetype_description": "<1 sentence describing this investor profile>"
 }
 
 Rules:
 - asset_allocation MUST sum to 100.
-- etf_picks should be 4-7 broad ETFs (e.g. VTI, VXUS, BND, VNQ, QQQ, SCHD, VWO). Honor user preferences (ESG → ESGV/ESGU; dividend → SCHD/VYM; growth → VUG/QQQ; international → VXUS/VEU; crypto → up to 5% via IBIT/FBTC if aggressive).
-- ${aggressive ? "stock_picks: 0-4 large/mega-cap individual stocks. Each picks <= 5% of total." : "stock_picks: MUST be an empty array []."}
+- etf_picks should be 4-7 broad ETFs. Honor user preferences:
+  ESG → ESGV/ESGU/SUSL; dividend → SCHD/VYM; growth → VUG/QQQ; international → VXUS/VEU; crypto → up to 5% via IBIT/FBTC (aggressive only); smallCap → VB/VIOO; realEstate → VNQ/SCHH; value → VTV/VONV.
+- ${aggressive ? "stock_picks: 0-4 large/mega-cap individual stocks. Each <= 5% of total." : "stock_picks: MUST be an empty array []."}
 - The sum of allocation_percent across etf_picks + stock_picks should be ~100 (within ±2).
 - expected_return_range: realistic annualized total return. Conservative ~4-6%, Aggressive ~8-12%.
 - Use US-listed tickers only.
-- Tone: factual, educational. No hype.`;
+- Tone: factual, educational. No hype.
+- portfolio_archetype: a short, memorable investor persona label.`;
 }
 
 export function validateRecommendation(parsed: unknown): BuilderRecommendation | null {
@@ -175,6 +214,15 @@ export function validateRecommendation(parsed: unknown): BuilderRecommendation |
     typeof p.rebalance_frequency === "string" ? p.rebalance_frequency.trim() : "Annually";
   if (!risk_assessment) return null;
 
+  const portfolio_archetype =
+    typeof p.portfolio_archetype === "string" && p.portfolio_archetype.trim()
+      ? p.portfolio_archetype.trim()
+      : "The Balanced Investor";
+  const archetype_description =
+    typeof p.archetype_description === "string" && p.archetype_description.trim()
+      ? p.archetype_description.trim()
+      : "";
+
   return {
     asset_allocation: {
       stocks: Math.round(aa.stocks),
@@ -187,6 +235,8 @@ export function validateRecommendation(parsed: unknown): BuilderRecommendation |
     expected_return_range: { low, high },
     risk_assessment,
     rebalance_frequency,
+    portfolio_archetype,
+    archetype_description,
     generated_at: new Date().toISOString(),
   };
 }
