@@ -36,6 +36,16 @@
     --bone: 36 36% 94%;
     --gold: 42 70% 58%;
     --signal: 156 100% 50%;
+
+    /* Buffett Score design tokens */
+    --buffett-cream: #F7F3EC;
+    --buffett-ink: #1A1814;
+    --buffett-gold: #B08A3E;
+    --buffett-gold-deep: #8A6A26;
+    --buffett-pass: #2F6B43;
+    --buffett-fail: #8C2A2A;
+    --buffett-partial: #B8862B;
+    --buffett-rule: #D9D2C2;
   }
 
   .dark {
@@ -63,6 +73,16 @@
     --bone: 36 36% 94%;
     --gold: 42 70% 60%;
     --signal: 156 100% 60%;
+
+    /* Buffett Score design tokens — dark palette */
+    --buffett-cream: #1A1610;
+    --buffett-ink: #F7F3EC;
+    --buffett-gold: #C8A050;
+    --buffett-gold-deep: #A07A30;
+    --buffett-pass: #3A8C55;
+    --buffett-fail: #A03A3A;
+    --buffett-partial: #C89A3A;
+    --buffett-rule: #2A2520;
   }
 }
 
@@ -375,6 +395,25 @@
 @keyframes shimmer {
   0%   { background-position: -200% 0; }
   100% { background-position: 200% 0; }
+}
+
+/* ─── Buffett Score Surface ─── */
+.buffett-surface {
+  border: 1px solid var(--buffett-rule, #D9D2C2);
+}
+.dark .buffett-surface {
+  border-color: var(--buffett-rule, #2A2520);
+}
+/* Skeleton shimmer for buffett section */
+.buffett-surface .shimmer {
+  background: linear-gradient(90deg, #D9D2C2 25%, #E8E0D0 50%, #D9D2C2 75%);
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+}
+.dark .buffett-surface .shimmer {
+  background: linear-gradient(90deg, #2A2520 25%, #332D28 50%, #2A2520 75%);
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
 }
 
 /* ─── Research Terminal ─── */

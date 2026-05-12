@@ -11,6 +11,7 @@ import {
   Trophy,
   FlaskConical,
   Sparkles,
+  BarChart3,
   type LucideIcon,
 } from "lucide-react";
 
@@ -33,4 +34,5 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { label: "Market Recap", href: "/market-recap", icon: Sparkles },
   { label: "News", href: "/news", icon: Newspaper },
   { label: "Achievements", href: "/achievements", icon: Trophy },
+  { label: "Buffett Screener", href: "/buffett-screener", icon: BarChart3 },
 ] as const;
