@@ -22,9 +22,9 @@ export async function GET(request: NextRequest) {
   }
 
   // Check required env
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!process.env.GOOGLE_AI_API_KEY) {
     return NextResponse.json(
-      { error: "ANTHROPIC_API_KEY not configured" },
+      { error: "GOOGLE_AI_API_KEY not configured" },
       { status: 503 }
     );
   }
