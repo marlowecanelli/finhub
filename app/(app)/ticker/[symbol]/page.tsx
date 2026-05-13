@@ -9,6 +9,7 @@ import { FinancialHighlights } from "@/components/ticker/financial-highlights";
 import { AnalystRatings } from "@/components/ticker/analyst-ratings";
 import { NewsSection } from "@/components/ticker/news-section";
 import { BuffettScoreSection } from "@/components/buffett/BuffettScoreSection";
+import { StockAnalyticsCard } from "@/components/ticker/StockAnalyticsCard";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -58,6 +59,9 @@ export default async function TickerPage({ params }: PageProps) {
         data={summary.financialsQuarterly}
         currency={summary.quote.currency}
       />
+
+      {/* Advanced analytics — VaR, Sharpe, Beta, drawdown, stress tests */}
+      <StockAnalyticsCard symbol={symbol} />
 
       {/* Buffett Score — lazy-loaded client component, does not block page render */}
       <BuffettScoreSection ticker={symbol} />
