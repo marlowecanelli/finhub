@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { WatchlistButton } from "@/components/watchlist/watchlist-button";
 import { AnimatedNumber } from "./animated-number";
 import { cn, formatCurrency, formatPercent } from "@/lib/utils";
+import { BuffettMiniStamp } from "@/components/buffett/BuffettMiniStamp";
 import type { QuoteSnapshot } from "@/lib/yahoo";
 
 function CompanyLogo({ symbol, website, name }: { symbol: string; website: string | null; name: string }) {
@@ -72,9 +73,9 @@ type LiveQuote = {
   marketState: string | null;
 };
 
-type Props = { quote: QuoteSnapshot; website?: string | null };
+type Props = { quote: QuoteSnapshot; website?: string | null; ticker?: string };
 
-export function TickerHeader({ quote, website }: Props) {
+export function TickerHeader({ quote, website, ticker }: Props) {
   const [inPortfolio, setInPortfolio] = useState(false);
   const [live, setLive] = useState<LiveQuote>({
     price: quote.price,
@@ -141,9 +142,12 @@ export function TickerHeader({ quote, website }: Props) {
                 </span>
               )}
             </div>
-            <h1 className="mt-2 font-display text-2xl font-medium leading-tight tracking-tight md:text-4xl">
-              {quote.name}
-            </h1>
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              <h1 className="font-display text-2xl font-medium leading-tight tracking-tight md:text-4xl">
+                {quote.name}
+              </h1>
+              {ticker && <BuffettMiniStamp ticker={ticker} />}
+            </div>
             <p className="mt-0.5 font-mono text-sm uppercase tracking-[0.16em] text-muted-foreground">
               {quote.symbol}
             </p>

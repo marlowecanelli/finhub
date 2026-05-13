@@ -38,7 +38,7 @@ function StatusIcon({ status }: { status: BuffettCriterion["status"] }) {
       </svg>
     );
   }
-  // partial — half circle
+  // partial
   return (
     <svg
       width="18"
@@ -57,10 +57,9 @@ function StatusIcon({ status }: { status: BuffettCriterion["status"] }) {
 
 function ScoreBar({ score }: { score: number }) {
   const pct = (score / 10) * 100;
-  const color =
-    score >= 7 ? "#2F6B43" : score >= 4 ? "#B8862B" : "#8C2A2A";
+  const color = score >= 7 ? "#2F6B43" : score >= 4 ? "#B8862B" : "#8C2A2A";
   return (
-    <div className="relative h-1 w-14 overflow-hidden rounded-full bg-[#D9D2C2] dark:bg-[#2A2520]">
+    <div className="relative h-1 w-14 overflow-hidden rounded-full bg-border/50">
       <div
         className="absolute left-0 top-0 h-full rounded-full transition-all duration-700"
         style={{ width: `${pct}%`, backgroundColor: color }}
@@ -71,7 +70,7 @@ function ScoreBar({ score }: { score: number }) {
 
 export function CriterionRow({ criterion, onWhy }: CriterionRowProps) {
   return (
-    <div className="grid grid-cols-[20px_1fr_auto] items-start gap-x-3 gap-y-1 py-3 sm:grid-cols-[20px_1fr_120px_auto] border-b border-[#D9D2C2]/40 dark:border-[#2A2520] last:border-b-0">
+    <div className="grid grid-cols-[20px_1fr_auto] items-start gap-x-3 gap-y-1 border-b border-border/40 py-3 last:border-b-0 sm:grid-cols-[20px_1fr_120px_auto]">
       {/* Status icon */}
       <div className="pt-0.5">
         <StatusIcon status={criterion.status} />
@@ -79,13 +78,13 @@ export function CriterionRow({ criterion, onWhy }: CriterionRowProps) {
 
       {/* Name + explanation */}
       <div className="min-w-0">
-        <p className="font-serif text-[0.88rem] font-normal leading-snug text-[#1A1814] dark:text-[#F7F3EC]">
+        <p className="text-[0.88rem] font-medium leading-snug text-foreground">
           {criterion.name}
         </p>
-        <p className="mt-0.5 font-serif text-[0.78rem] italic leading-relaxed text-[#1A1814]/60 dark:text-[#F7F3EC]/50">
+        <p className="mt-0.5 text-[0.78rem] italic leading-relaxed text-muted-foreground">
           {criterion.explanation}
         </p>
-        <p className="mt-1 font-mono text-[0.7rem] text-[#1A1814]/40 dark:text-[#F7F3EC]/30">
+        <p className="mt-1 font-mono text-[0.7rem] text-muted-foreground/60">
           {criterion.actual}
         </p>
       </div>
@@ -93,7 +92,7 @@ export function CriterionRow({ criterion, onWhy }: CriterionRowProps) {
       {/* Score bar + number — hidden on mobile */}
       <div className="hidden items-center gap-2 sm:flex">
         <ScoreBar score={criterion.score} />
-        <span className="font-mono text-[0.75rem] tabular-nums text-[#1A1814]/60 dark:text-[#F7F3EC]/50">
+        <span className="font-mono text-[0.75rem] tabular-nums text-muted-foreground">
           {criterion.score.toFixed(1)}
         </span>
       </div>
@@ -101,7 +100,7 @@ export function CriterionRow({ criterion, onWhy }: CriterionRowProps) {
       {/* Why link */}
       <button
         onClick={() => onWhy(criterion.id)}
-        className="whitespace-nowrap font-sans text-[0.7rem] font-medium uppercase tracking-wider text-[#B08A3E] transition-opacity hover:opacity-70"
+        className="whitespace-nowrap font-mono text-[0.7rem] uppercase tracking-wider text-[#B08A3E] transition-opacity hover:opacity-70"
         aria-label={`Why does ${criterion.name} matter?`}
       >
         Why?

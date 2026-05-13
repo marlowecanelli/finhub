@@ -35,7 +35,7 @@ export default async function TickerPage({ params }: PageProps) {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 md:px-8">
-      <TickerHeader quote={summary.quote} website={summary.profile.website} />
+      <TickerHeader quote={summary.quote} website={summary.profile.website} ticker={symbol} />
 
       <PriceChart symbol={symbol} currency={summary.quote.currency} />
 

@@ -1,7 +1,7 @@
 import YahooFinance from "yahoo-finance2";
 import type { FundamentalsSnapshot, AnnualFinancial } from "./types";
 
-const yf = new YahooFinance();
+const yf = new YahooFinance({ suppressNotices: ["yahooSurvey"] });
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
@@ -17,19 +17,10 @@ async function fetchWithRetry<T>(fn: () => Promise<T>, retries = 1, delay = 1500
   }
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function safeNum(v: unknown): number | null {
   if (typeof v === "number" && isFinite(v)) return v;
-  return null;
-}
-
-function safeDate(v: unknown): Date | null {
-  if (v instanceof Date && !isNaN(v.getTime())) return v;
-  if (typeof v === "string" || typeof v === "number") {
-    const d = new Date(v);
-    return isNaN(d.getTime()) ? null : d;
-  }
   return null;
 }
 
@@ -59,152 +50,171 @@ function computeROIC(
   return nopat / ic;
 }
 
+// Convert a fundamentalsTimeSeries row to a plain record for safe access
+function toRecord(row: unknown): Record<string, unknown> {
+  return (row && typeof row === "object" ? row : {}) as Record<string, unknown>;
+}
+
 // ── Main fetch ────────────────────────────────────────────────────────────────
 
 export async function getFundamentals(ticker: string): Promise<FundamentalsSnapshot | null> {
   const sym = ticker.toUpperCase();
+  const sixYearsAgo = new Date();
+  sixYearsAgo.setFullYear(sixYearsAgo.getFullYear() - 6);
+  const period1 = sixYearsAgo.toISOString().slice(0, 10);
 
-  // Batch fetch all required modules
-  const summary = await fetchWithRetry(() =>
-    yf.quoteSummary(sym, {
-      modules: [
-        "assetProfile",
-        "summaryDetail",
-        "defaultKeyStatistics",
-        "financialData",
-        "incomeStatementHistory",
-        "balanceSheetHistory",
-        "cashflowStatementHistory",
-        "majorHoldersBreakdown",
-        "price",
-      ],
-      // suppress validation errors on missing/unexpected fields
-      validateResult: false,
-    } as Parameters<typeof yf.quoteSummary>[1])
-  ).catch(() => null);
+  // ── Parallel fetch ────────────────────────────────────────────────────────
+  const [summary, finRows, bsRows, cfRows] = await Promise.all([
+    // Current company metadata (no history modules — those are deprecated)
+    fetchWithRetry(() =>
+      yf.quoteSummary(sym, {
+        modules: [
+          "assetProfile",
+          "summaryDetail",
+          "defaultKeyStatistics",
+          "financialData",
+          "majorHoldersBreakdown",
+          "price",
+        ],
+      })
+    ).catch(() => null),
+
+    // Income statement history via fundamentalsTimeSeries
+    fetchWithRetry(() =>
+      yf.fundamentalsTimeSeries(sym, { period1, type: "annual", module: "financials" })
+    ).catch(() => [] as unknown[]),
+
+    // Balance sheet history
+    fetchWithRetry(() =>
+      yf.fundamentalsTimeSeries(sym, { period1, type: "annual", module: "balance-sheet" })
+    ).catch(() => [] as unknown[]),
+
+    // Cash flow history
+    fetchWithRetry(() =>
+      yf.fundamentalsTimeSeries(sym, { period1, type: "annual", module: "cash-flow" })
+    ).catch(() => [] as unknown[]),
+  ]);
 
   if (!summary) return null;
+  if ((finRows as unknown[]).length < 2) return null;
 
-  const assetProfile = summary.assetProfile as Record<string, unknown> | undefined;
-  const summaryDetail = summary.summaryDetail as Record<string, unknown> | undefined;
-  const keyStats = summary.defaultKeyStatistics as Record<string, unknown> | undefined;
-  const financialData = summary.financialData as Record<string, unknown> | undefined;
-  const price = summary.price as Record<string, unknown> | undefined;
-  const majorHolders = summary.majorHoldersBreakdown as Record<string, unknown> | undefined;
+  const assetProfile   = summary.assetProfile   as Record<string, unknown> | undefined;
+  const summaryDetail  = summary.summaryDetail   as Record<string, unknown> | undefined;
+  const keyStats       = summary.defaultKeyStatistics as Record<string, unknown> | undefined;
+  const financialData  = summary.financialData   as Record<string, unknown> | undefined;
+  const price          = summary.price           as Record<string, unknown> | undefined;
+  const majorHolders   = summary.majorHoldersBreakdown as Record<string, unknown> | undefined;
 
-  // ── Income statements ──────────────────────────────────────────────────────
-  const rawIncome = (
-    (summary.incomeStatementHistory as Record<string, unknown> | undefined)
-      ?.incomeStatementHistory as unknown[]
-  ) ?? [];
+  // ── Build lookup maps by fiscal year (date.getFullYear()) ─────────────────
+  // fundamentalsTimeSeries rows have a Date object in the `date` field
 
-  // ── Balance sheets ─────────────────────────────────────────────────────────
-  const rawBalance = (
-    (summary.balanceSheetHistory as Record<string, unknown> | undefined)
-      ?.balanceSheetStatements as unknown[]
-  ) ?? [];
-
-  // ── Cash flows ─────────────────────────────────────────────────────────────
-  const rawCashflow = (
-    (summary.cashflowStatementHistory as Record<string, unknown> | undefined)
-      ?.cashflowStatements as unknown[]
-  ) ?? [];
-
-  if (rawIncome.length < 2) return null; // need at least 2 years
-
-  // ── Build annual records ───────────────────────────────────────────────────
-  const annualMap: Map<number, Partial<AnnualFinancial>> = new Map();
-
-  function getOrCreate(year: number): Partial<AnnualFinancial> {
-    if (!annualMap.has(year)) annualMap.set(year, { year });
-    return annualMap.get(year)!;
-  }
-
-  for (const row of rawIncome) {
-    const r = row as Record<string, unknown>;
-    const endDate = safeDate(r.endDate);
-    if (!endDate) continue;
-    const year = endDate.getFullYear();
-    const rec = getOrCreate(year);
-    const revenue = safeNum(r.totalRevenue);
-    const netIncome = safeNum(r.netIncome);
-    const grossProfit = safeNum(r.grossProfit);
-    const eps = safeNum(r.dilutedEps) ?? safeNum(r.basicEps);
-    rec.revenue = revenue;
-    rec.netIncome = netIncome;
-    rec.grossProfit = grossProfit;
-    rec.eps = eps;
-    rec.netMargin = revenue && revenue !== 0 && netIncome != null ? netIncome / revenue : null;
-    rec.grossMargin = revenue && revenue !== 0 && grossProfit != null ? grossProfit / revenue : null;
-  }
-
-  for (const row of rawBalance) {
-    const r = row as Record<string, unknown>;
-    const endDate = safeDate(r.endDate);
-    if (!endDate) continue;
-    const year = endDate.getFullYear();
-    const rec = getOrCreate(year);
-    const equity = safeNum(r.totalStockholdersEquity);
-    const longTermDebt = safeNum(r.longTermDebt);
-    const totalDebt = safeNum(r.totalDebt) ?? (longTermDebt ?? 0);
-    const shares = safeNum(r.commonStock) ?? safeNum(r.commonSharesOutstanding);
-    rec.equity = equity;
-    rec.totalDebt = totalDebt;
-    rec.longTermDebt = longTermDebt;
-    rec.sharesOutstanding = shares;
-    // ROE
-    if (rec.netIncome != null && equity && equity !== 0) {
-      rec.roe = rec.netIncome / equity;
+  function rowYear(row: unknown): number | null {
+    const r = toRecord(row);
+    const d = r["date"];
+    if (d instanceof Date && !isNaN(d.getTime())) return d.getFullYear();
+    if (typeof d === "string" || typeof d === "number") {
+      const parsed = new Date(d);
+      return isNaN(parsed.getTime()) ? null : parsed.getFullYear();
     }
+    return null;
   }
 
-  for (const row of rawCashflow) {
-    const r = row as Record<string, unknown>;
-    const endDate = safeDate(r.endDate);
-    if (!endDate) continue;
-    const year = endDate.getFullYear();
-    const rec = getOrCreate(year);
-    const ocf = safeNum(r.totalCashFromOperatingActivities);
-    const capex = safeNum(r.capitalExpenditures);
-    const sbc = safeNum(r.stockBasedCompensation);
-    rec.operatingCashFlow = ocf;
-    rec.capex = capex;
-    rec.sbc = sbc;
-    rec.fcf = ocf != null && capex != null ? ocf + capex : ocf ?? null; // capex is negative in Yahoo
-    // ROIC approximation
-    if (rec.netIncome != null && rec.equity != null) {
-      const ie = safeNum(r.interestExpense) ?? 0;
-      rec.roic = computeROIC(rec.netIncome, ie, 0.21, rec.totalDebt ?? 0, rec.equity);
-    }
+  const bsByYear  = new Map<number, Record<string, unknown>>();
+  const cfByYear  = new Map<number, Record<string, unknown>>();
+  for (const row of bsRows as unknown[]) {
+    const yr = rowYear(row);
+    if (yr != null) bsByYear.set(yr, toRecord(row));
+  }
+  for (const row of cfRows as unknown[]) {
+    const yr = rowYear(row);
+    if (yr != null) cfByYear.set(yr, toRecord(row));
   }
 
-  // Sort annuals oldest-first
+  // ── Assemble AnnualFinancial records ──────────────────────────────────────
+  const annualMap = new Map<number, Partial<AnnualFinancial>>();
+
+  for (const row of finRows as unknown[]) {
+    const yr = rowYear(row);
+    if (yr == null) continue;
+    const f = toRecord(row);
+
+    const revenue    = safeNum(f["totalRevenue"])   ?? safeNum(f["operatingRevenue"]);
+    const netIncome  = safeNum(f["netIncome"])       ?? safeNum(f["netIncomeCommonStockholders"]);
+    const grossProfit = safeNum(f["grossProfit"]);
+    // New API uses dilutedEPS (uppercase S); fall back to basicEPS
+    const eps        = safeNum(f["dilutedEPS"])      ?? safeNum(f["basicEPS"]);
+    const ie         = safeNum(f["interestExpense"]); // positive amount in new API
+
+    const bs = bsByYear.get(yr) ?? {};
+    const cf = cfByYear.get(yr) ?? {};
+
+    const equity       = safeNum(bs["stockholdersEquity"])   ?? safeNum(bs["commonStockEquity"]);
+    const longTermDebt = safeNum(bs["longTermDebt"]);
+    const totalDebt    = safeNum(bs["totalDebt"])            ?? longTermDebt ?? 0;
+    const shares       = safeNum(bs["ordinarySharesNumber"]) ?? safeNum(bs["shareIssued"]);
+
+    // operatingCashFlow: new API field name (positive)
+    const ocf  = safeNum(cf["operatingCashFlow"])    ?? safeNum(cf["cashFlowFromContinuingOperatingActivities"]);
+    // capitalExpenditure: negative in new API (same convention as old)
+    const capex = safeNum(cf["capitalExpenditure"]);
+    const sbc  = safeNum(cf["stockBasedCompensation"]);
+    // freeCashFlow provided directly, or compute from ocf + capex (capex is negative)
+    const fcf  = safeNum(cf["freeCashFlow"])         ??
+      (ocf != null && capex != null ? ocf + capex : ocf ?? null);
+
+    const netMargin   = revenue && revenue !== 0 && netIncome != null ? netIncome / revenue : null;
+    const grossMargin = revenue && revenue !== 0 && grossProfit != null ? grossProfit / revenue : null;
+    const roe         = netIncome != null && equity && equity !== 0 ? netIncome / equity : null;
+    const roic        = computeROIC(netIncome, ie, 0.21, totalDebt, equity);
+
+    annualMap.set(yr, {
+      year: yr,
+      revenue,
+      netIncome,
+      grossProfit,
+      eps,
+      netMargin,
+      grossMargin,
+      operatingCashFlow: ocf,
+      capex,
+      fcf,
+      totalDebt,
+      longTermDebt,
+      equity,
+      roe,
+      sharesOutstanding: shares,
+      sbc,
+      roic,
+    });
+  }
+
+  // Sort oldest-first; normalise to AnnualFinancial
   const annuals: AnnualFinancial[] = Array.from(annualMap.values())
     .filter((a) => a.year != null)
-    .sort((a, b) => a.year! - b.year!)
+    .sort((a, b) => (a.year ?? 0) - (b.year ?? 0))
     .map((a) => ({
-      year: a.year ?? 0,
-      revenue: a.revenue ?? null,
-      netIncome: a.netIncome ?? null,
-      grossProfit: a.grossProfit ?? null,
-      eps: a.eps ?? null,
-      netMargin: a.netMargin ?? null,
-      grossMargin: a.grossMargin ?? null,
-      operatingCashFlow: a.operatingCashFlow ?? null,
-      capex: a.capex ?? null,
-      fcf: a.fcf ?? null,
-      totalDebt: a.totalDebt ?? null,
-      longTermDebt: a.longTermDebt ?? null,
-      equity: a.equity ?? null,
-      roe: a.roe ?? null,
-      sharesOutstanding: a.sharesOutstanding ?? null,
-      sbc: a.sbc ?? null,
-      roic: a.roic ?? null,
+      year:              a.year               ?? 0,
+      revenue:           a.revenue            ?? null,
+      netIncome:         a.netIncome          ?? null,
+      grossProfit:       a.grossProfit        ?? null,
+      eps:               a.eps                ?? null,
+      netMargin:         a.netMargin          ?? null,
+      grossMargin:       a.grossMargin        ?? null,
+      operatingCashFlow: a.operatingCashFlow  ?? null,
+      capex:             a.capex              ?? null,
+      fcf:               a.fcf               ?? null,
+      totalDebt:         a.totalDebt          ?? null,
+      longTermDebt:      a.longTermDebt       ?? null,
+      equity:            a.equity             ?? null,
+      roe:               a.roe               ?? null,
+      sharesOutstanding: a.sharesOutstanding  ?? null,
+      sbc:               a.sbc               ?? null,
+      roic:              a.roic              ?? null,
     }));
 
   if (annuals.length < 2) return null;
 
-  // ── Price history (5Y weekly) ──────────────────────────────────────────────
+  // ── Price history (5Y weekly) ─────────────────────────────────────────────
   const fiveYearsAgo = new Date();
   fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
 
@@ -216,21 +226,17 @@ export async function getFundamentals(ticker: string): Promise<FundamentalsSnaps
     .filter((p) => p.close != null)
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .map((p) => ({
-      date: new Date(p.date).toISOString().slice(0, 10),
+      date:  new Date(p.date).toISOString().slice(0, 10),
       close: p.close!,
     }));
 
-  // ── Dividend history ───────────────────────────────────────────────────────
+  // ── Dividend history (10Y monthly) ───────────────────────────────────────
   let dividendHistory: { date: string; amount: number }[] = [];
   try {
     const tenYearsAgo = new Date();
     tenYearsAgo.setFullYear(tenYearsAgo.getFullYear() - 10);
     const divRaw = await fetchWithRetry(() =>
-      yf.historical(sym, {
-        period1: tenYearsAgo,
-        interval: "1mo",
-        events: "dividends",
-      })
+      yf.historical(sym, { period1: tenYearsAgo, interval: "1mo", events: "dividends" })
     ).catch(() => []);
 
     dividendHistory = (divRaw ?? [])
@@ -241,86 +247,86 @@ export async function getFundamentals(ticker: string): Promise<FundamentalsSnaps
       .map((item) => {
         const it = item as unknown as Record<string, unknown>;
         return {
-          date: new Date(it.date as Date).toISOString().slice(0, 10),
-          amount: safeNum(it.dividends) ?? 0,
+          date:   new Date(it["date"] as Date).toISOString().slice(0, 10),
+          amount: safeNum(it["dividends"]) ?? 0,
         };
       })
       .filter((d) => d.amount > 0);
   } catch {
-    // dividend history optional
+    // optional — no-op
   }
 
-  // ── Current metrics ────────────────────────────────────────────────────────
+  // ── Current metrics from quoteSummary ─────────────────────────────────────
   const currentPrice =
-    safeNum(price?.regularMarketPrice) ?? safeNum(summaryDetail?.open) ?? null;
-  const marketCap = safeNum(price?.marketCap) ?? safeNum(summaryDetail?.marketCap) ?? null;
-  const peRatio = safeNum(summaryDetail?.trailingPE) ?? null;
-  const dividendYield = safeNum(summaryDetail?.dividendYield) ?? null;
-  const currentShares =
-    safeNum(keyStats?.sharesOutstanding) ??
+    safeNum(price?.["regularMarketPrice"]) ?? safeNum(summaryDetail?.["open"]) ?? null;
+  const marketCap =
+    safeNum(price?.["marketCap"]) ?? safeNum(summaryDetail?.["marketCap"]) ?? null;
+  const peRatio        = safeNum(summaryDetail?.["trailingPE"]) ?? null;
+  const dividendYield  = safeNum(summaryDetail?.["dividendYield"]) ?? null;
+  const currentShares  =
+    safeNum(keyStats?.["sharesOutstanding"]) ??
     annuals[annuals.length - 1]?.sharesOutstanding ??
     null;
 
   const insiderPct =
-    safeNum((majorHolders as Record<string, unknown> | undefined)?.insidersPercentHeld) ??
-    safeNum(keyStats?.insiderPercentHeld) ??
+    safeNum(majorHolders?.["insidersPercentHeld"]) ??
+    safeNum(keyStats?.["insiderPercentHeld"]) ??
     null;
 
-  const fcfTTM = safeNum(financialData?.freeCashflow) ?? null;
-  const roicCurrent = safeNum(financialData?.returnOnAssets) ?? null; // fallback if not available
+  const fcfTTM      = safeNum(financialData?.["freeCashflow"]) ?? null;
+  const roicCurrent =
+    safeNum(financialData?.["returnOnEquity"]) ??   // prefer ROE as ROIC proxy
+    safeNum(financialData?.["returnOnAssets"]) ??
+    null;
 
-  // Founder-led heuristic: check if any officer has "Founder" in title
-  const officers = (assetProfile?.companyOfficers as unknown[] | undefined) ?? [];
+  // Founder-led: any officer with "Founder" in their title
+  const officers   = (assetProfile?.["companyOfficers"] as unknown[] | undefined) ?? [];
   const founderLed = officers.some((o) => {
     const off = o as Record<string, unknown>;
-    return typeof off.title === "string" && /founder/i.test(off.title);
+    return typeof off["title"] === "string" && /founder/i.test(off["title"] as string);
   });
 
-  // ── MD&A excerpt for AI criterion ─────────────────────────────────────────
-  const description = typeof assetProfile?.longBusinessSummary === "string"
-    ? (assetProfile.longBusinessSummary as string)
-    : "";
+  const description =
+    typeof assetProfile?.["longBusinessSummary"] === "string"
+      ? (assetProfile["longBusinessSummary"] as string)
+      : "";
 
   return {
-    ticker: sym,
+    ticker:    sym,
     companyName:
-      (price?.longName as string) ??
-      (price?.shortName as string) ??
+      (price?.["longName"]  as string | undefined) ??
+      (price?.["shortName"] as string | undefined) ??
       sym,
-    sector: (assetProfile?.sector as string) ?? "",
-    industry: (assetProfile?.industry as string) ?? "",
+    sector:   (assetProfile?.["sector"]   as string | undefined) ?? "",
+    industry: (assetProfile?.["industry"] as string | undefined) ?? "",
     description,
     currentPrice,
     marketCap,
     peRatio,
     dividendYield,
     currentSharesOutstanding: currentShares,
-    insiderOwnershipPct: insiderPct,
+    insiderOwnershipPct:      insiderPct,
     founderLed,
     annuals,
-    priceHistory: sortedHistory,
+    priceHistory:    sortedHistory,
     dividendHistory,
     fcfTTM,
     roicCurrent,
     mdaExcerpt: description.slice(0, 4000),
-    dataAsOf: new Date().toISOString(),
+    dataAsOf:   new Date().toISOString(),
   };
 }
 
 // ── Utilities used by criteria ────────────────────────────────────────────────
 
-export function cagr(
-  startValue: number,
-  endValue: number,
-  years: number
-): number | null {
+export function cagr(startValue: number, endValue: number, years: number): number | null {
   if (startValue <= 0 || endValue <= 0 || years <= 0) return null;
   return Math.pow(endValue / startValue, 1 / years) - 1;
 }
 
 export function stddev(values: number[]): number {
   if (values.length < 2) return 0;
-  const mean = values.reduce((a, b) => a + b, 0) / values.length;
+  const mean     = values.reduce((a, b) => a + b, 0) / values.length;
   const variance = values.reduce((acc, v) => acc + (v - mean) ** 2, 0) / (values.length - 1);
   return Math.sqrt(variance);
 }
