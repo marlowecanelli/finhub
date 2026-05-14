@@ -45,6 +45,7 @@ export function extractJson(text: string): unknown {
 }
 
 function isRateLimitError(err: unknown): boolean {
+  if (err && typeof err === "object" && "status" in err && (err as { status: unknown }).status === 429) return true;
   const msg = err instanceof Error ? err.message : String(err);
   return msg.includes("429") || msg.includes("RESOURCE_EXHAUSTED");
 }
