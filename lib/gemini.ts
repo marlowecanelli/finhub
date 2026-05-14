@@ -1,6 +1,6 @@
 import { GoogleGenAI, type GenerateContentParameters } from "@google/genai";
 
-export const GEMINI_MODEL = "gemini-2.0-flash";
+export const GEMINI_MODEL = "gemini-3.1-flash-lite";
 
 interface KeyState {
   client: GoogleGenAI;
