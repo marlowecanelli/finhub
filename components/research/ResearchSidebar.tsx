@@ -7,7 +7,7 @@ import {
   Eye, BarChart2, RefreshCw, Calendar,
   CalendarDays, Star, Filter,
   ChevronLeft, ChevronRight, FlaskConical, LayoutDashboard,
-  Compass, Search,
+  Compass, Search, FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +24,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Earnings Intelligence",  href: "/research/earnings",         icon: Calendar,     live: true },
   { label: "Analyst Ratings",        href: "/research/analyst-ratings",  icon: Star,         live: true },
   { label: "Insider Activity",       href: "/research/insider-trading",  icon: Eye,          live: true },
+  { label: "SEC Filings",            href: "/research/filings",          icon: FileText,     live: true },
   { label: "Sector Rotation",        href: "/research/sector-rotation",  icon: RefreshCw,    live: true },
   { label: "Val. Screener",          href: "/research/screener",         icon: Filter,       live: true },
   { label: "Macro Dashboard",        href: "/research/macro",            icon: BarChart2 },

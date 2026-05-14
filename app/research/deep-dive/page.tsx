@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Search, TrendingUp, TrendingDown, Building2, Globe, Users, ExternalLink } from "lucide-react";
+import { Search, TrendingUp, TrendingDown, Building2, Globe, Users, ExternalLink, FileText } from "lucide-react";
 import {
   AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip, ReferenceLine,
 } from "recharts";
@@ -49,6 +49,7 @@ function DeepDiveContent() {
   const [input, setInput] = useState(ticker);
   const [data, setData] = useState<DeepDive | null>(null);
   const [loading, setLoading] = useState(true);
+  const [filings, setFilings] = useState<{ accession: string; form: string; filedAt: string; primaryDoc: string; description: string }[]>([]);
 
   useEffect(() => { setInput(ticker); }, [ticker]);
 
@@ -64,6 +65,19 @@ function DeepDiveContent() {
   }, []);
 
   useEffect(() => { load(ticker); }, [ticker, load]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setFilings([]);
+    (async () => {
+      try {
+        const res = await fetch(`/api/research/edgar?ticker=${encodeURIComponent(ticker)}`);
+        const json = await res.json();
+        if (!cancelled && json.filings) setFilings(json.filings);
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, [ticker]);
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -335,6 +349,61 @@ function DeepDiveContent() {
                 </p>
               )}
             </div>
+          </div>
+
+          {/* SEC Filings */}
+          <div className="rounded-lg overflow-hidden" style={{ background: "#141720", border: "1px solid #1E2130" }}>
+            <div className="px-4 py-2.5 border-b flex items-center gap-2" style={{ borderColor: "#1E2130" }}>
+              <FileText size={13} className="text-[#FFB347]" />
+              <span className="text-[10px] font-mono uppercase tracking-widest text-[#717A94]">SEC Filings · EDGAR</span>
+              <span className="ml-auto text-[10px] font-mono text-[#3A3F52]">Source: sec.gov</span>
+            </div>
+            {filings.length === 0 ? (
+              <div className="p-6 text-xs text-[#717A94]">Loading EDGAR filings…</div>
+            ) : (
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-[10px] font-mono uppercase tracking-widest text-[#717A94]">
+                    <th className="text-left px-4 py-2 w-24">Form</th>
+                    <th className="text-left px-4 py-2">Description</th>
+                    <th className="text-right px-4 py-2 w-32">Filed</th>
+                    <th className="text-right px-4 py-2 w-20"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filings.slice(0, 12).map(f => {
+                    const isImportant = ["10-K","10-Q","8-K"].includes(f.form);
+                    const formColor = f.form === "10-K" ? "#A78BFA"
+                      : f.form === "10-Q" ? "#00D4FF"
+                      : f.form === "8-K" ? "#FFB347"
+                      : f.form.startsWith("4") || f.form === "4" ? "#39FF14"
+                      : "#717A94";
+                    return (
+                      <tr key={f.accession} className="border-t hover:bg-[#1E2130]/40 transition-colors" style={{ borderColor: "#1E2130" }}>
+                        <td className="px-4 py-2">
+                          <span className="inline-block rounded px-2 py-0.5 font-mono text-[10px] font-bold"
+                            style={{ background: `${formColor}15`, color: formColor, border: `1px solid ${formColor}30` }}>
+                            {f.form}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 text-[#C8D0E7]" style={{ opacity: isImportant ? 1 : 0.75 }}>
+                          {f.description}
+                        </td>
+                        <td className="px-4 py-2 text-right font-mono text-[#717A94]">
+                          {new Date(f.filedAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-4 py-2 text-right">
+                          <a href={f.primaryDoc} target="_blank" rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-[10px] font-mono text-[#00D4FF] hover:underline">
+                            Open <ExternalLink size={9} />
+                          </a>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </div>
         </>
       )}

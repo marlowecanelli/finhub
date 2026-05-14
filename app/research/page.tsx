@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   TrendingUp, TrendingDown, Activity, ArrowRight, Eye, Star,
-  Calendar, RefreshCw, BarChart2, Filter, CalendarDays, Search,
+  Calendar, RefreshCw, BarChart2, Filter, CalendarDays, Search, FileText,
 } from "lucide-react";
 
 interface IndexQuote {
@@ -32,6 +32,8 @@ const SECTIONS = [
     desc: "Wall Street consensus, target price, upgrades and downgrades." },
   { label: "Insider Activity",      href: "/research/insider-trading", icon: Eye,       color: "#39FF14",
     desc: "Live SEC Form 4 filings from C-suite and 10%+ owners." },
+  { label: "SEC Filings",           href: "/research/filings",         icon: FileText,  color: "#FFB347",
+    desc: "Live 8-K, 10-Q, 10-K filings firehose from EDGAR." },
   { label: "Sector Rotation",       href: "/research/sector-rotation", icon: RefreshCw, color: "#00C896",
     desc: "RRG quadrants, sector heatmap, leaders and laggards." },
   { label: "Valuation Screener",    href: "/research/screener",        icon: Filter,    color: "#FF6B9D",
