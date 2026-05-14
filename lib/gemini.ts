@@ -83,7 +83,13 @@ export async function generateWithFallback(
   }
 
   // All keys rate-limited on 2.5-flash — fall back to 2.0-flash.
+  // Strip thinkingConfig since gemini-2.0-flash doesn't support it.
   const state = states[start]!;
-  const result = await state.client.models.generateContent({ ...params, model: GEMINI_FALLBACK_MODEL });
+  const { thinkingConfig: _tc, ...fallbackConfig } = params.config ?? {};
+  const result = await state.client.models.generateContent({
+    ...params,
+    config: { ...fallbackConfig },
+    model: GEMINI_FALLBACK_MODEL,
+  });
   return result.text ?? "";
 }
