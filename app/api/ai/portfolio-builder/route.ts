@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { GEMINI_MODEL, extractJson, getGemini } from "@/lib/gemini";
+import { extractJson, generateWithFallback } from "@/lib/gemini";
 import {
   buildPrompt,
   isComplete,
@@ -37,12 +37,10 @@ Respond ONLY with a single JSON object. No markdown, no prose, no fences. Ticker
 
   let text: string;
   try {
-    const result = await getGemini().models.generateContent({
-      model: GEMINI_MODEL,
+    text = await generateWithFallback({
       contents: buildPrompt(answers),
       config: { systemInstruction: system, maxOutputTokens: 4096, temperature: 0.4, responseMimeType: "application/json", thinkingConfig: { thinkingBudget: 0 } },
     });
-    text = result.text ?? "";
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Gemini error" },
