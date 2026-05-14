@@ -7,6 +7,7 @@ import {
   Eye, BarChart2, RefreshCw, Calendar,
   CalendarDays, Star, Filter,
   ChevronLeft, ChevronRight, FlaskConical, LayoutDashboard,
+  Compass, Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +19,8 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
+  { label: "Overview",               href: "/research",                  icon: Compass,      live: true },
+  { label: "Stock Deep Dive",        href: "/research/deep-dive",        icon: Search,       live: true },
   { label: "Earnings Intelligence",  href: "/research/earnings",         icon: Calendar,     live: true },
   { label: "Analyst Ratings",        href: "/research/analyst-ratings",  icon: Star,         live: true },
   { label: "Insider Activity",       href: "/research/insider-trading",  icon: Eye,          live: true },
@@ -73,7 +76,9 @@ export function ResearchSidebar() {
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto py-3 scrollbar-none">
         {NAV_ITEMS.map(item => {
-          const active = pathname === item.href || pathname.startsWith(item.href + "/");
+          const active = item.href === "/research"
+            ? pathname === "/research"
+            : pathname === item.href || pathname.startsWith(item.href + "/");
           const Icon = item.icon;
 
           return (
