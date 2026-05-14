@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
       const result = await getGemini().models.generateContent({
         model: GEMINI_MODEL,
         contents: `Write today's brief.\n\nContext (JSON):\n${JSON.stringify(ctx)}`,
-        config: { systemInstruction: SYSTEM, maxOutputTokens: 1024, temperature: 0.4, thinkingConfig: { thinkingBudget: 0 } },
+        config: { systemInstruction: SYSTEM, maxOutputTokens: 1024, temperature: 0.4 },
       });
       const text = (result.text ?? "").trim();
       await admin.from("calendar_briefs").upsert(

@@ -61,7 +61,7 @@ ${items
       maxOutputTokens: Math.min(4096, 200 * items.length + 200),
       temperature: 0.2,
       responseMimeType: "application/json",
-      thinkingConfig: { thinkingBudget: 0 },
+      
     },
   });
   const text = result.text ?? "";

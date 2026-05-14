@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
   const result = await getGemini().models.generateContent({
     model: GEMINI_MODEL,
     contents: `${PARAGRAPH_PROMPT}\n\nMarket data:\n${context}`,
-    config: { systemInstruction: SYSTEM, maxOutputTokens: 4096, temperature: 0.6, responseMimeType: "application/json", thinkingConfig: { thinkingBudget: 0 } },
+    config: { systemInstruction: SYSTEM, maxOutputTokens: 4096, temperature: 0.6, responseMimeType: "application/json" },
   });
   const raw = (result.text ?? "").trim();
 

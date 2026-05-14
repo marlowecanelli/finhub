@@ -126,7 +126,7 @@ export async function POST(req: Request) {
         const stream = await getGemini().models.generateContentStream({
           model: GEMINI_MODEL,
           contents: prompt,
-          config: { maxOutputTokens: 2048, temperature: 0.7, thinkingConfig: { thinkingBudget: 0 } },
+          config: { maxOutputTokens: 2048, temperature: 0.7 },
         });
         for await (const chunk of stream) {
           controller.enqueue(encoder.encode(chunk.text ?? ""));

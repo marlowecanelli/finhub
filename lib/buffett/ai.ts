@@ -131,7 +131,7 @@ export async function runAiAssessment(snap: FundamentalsSnapshot): Promise<AiAss
         maxOutputTokens: 1500,
         temperature: 0.3,
         responseMimeType: "application/json",
-        thinkingConfig: { thinkingBudget: 0 },
+        
       },
     });
 

@@ -39,7 +39,7 @@ Respond ONLY with a single JSON object. No markdown, no prose, no fences. Ticker
   try {
     text = await generateWithFallback({
       contents: buildPrompt(answers),
-      config: { systemInstruction: system, maxOutputTokens: 4096, temperature: 0.4, responseMimeType: "application/json", thinkingConfig: { thinkingBudget: 0 } },
+      config: { systemInstruction: system, maxOutputTokens: 4096, temperature: 0.4, responseMimeType: "application/json" },
     });
   } catch (err) {
     return NextResponse.json(
