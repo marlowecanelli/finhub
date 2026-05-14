@@ -8,8 +8,9 @@ export const runtime = "nodejs";
 export const maxDuration = 300; // Vercel max for Pro
 export const dynamic = "force-dynamic";
 
-const CONCURRENCY = 5;
-const TICKER_TIMEOUT_MS = 60_000;
+const CONCURRENCY = 10;
+const TICKER_TIMEOUT_MS = 15_000;
+const BATCH_SIZE = 125; // 4 batches of 125 = full S&P 500; each fits in 300s
 
 /**
  * Simple semaphore — runs at most `concurrency` tasks simultaneously.
@@ -71,9 +72,22 @@ export async function GET(request: NextRequest) {
 
   // Dry-run mode: process a small subset for testing
   const isDryRun = request.nextUrl.searchParams.get("dry_run") === "1";
-  const tickers = isDryRun ? SP500_TICKERS.slice(0, 10) : SP500_TICKERS;
+  // batch=0..3 processes a quarter of the S&P 500 at a time (fits in Vercel 300s limit)
+  // omit batch param to run all (legacy / local use only)
+  const batchParam = request.nextUrl.searchParams.get("batch");
+  const batchIndex = batchParam !== null ? parseInt(batchParam, 10) : null;
 
-  console.log(`[buffett-cron] Starting. Tickers: ${tickers.length}, dry_run: ${isDryRun}`);
+  let tickers: readonly string[];
+  if (isDryRun) {
+    tickers = SP500_TICKERS.slice(0, 10);
+  } else if (batchIndex !== null && !isNaN(batchIndex)) {
+    const start = batchIndex * BATCH_SIZE;
+    tickers = SP500_TICKERS.slice(start, start + BATCH_SIZE);
+  } else {
+    tickers = SP500_TICKERS;
+  }
+
+  console.log(`[buffett-cron] Starting. Tickers: ${tickers.length}, dry_run: ${isDryRun}, batch: ${batchIndex ?? "all"}`);
 
   const startedAt = Date.now();
   let successes = 0;
@@ -123,6 +137,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     ok: true,
     dry_run: isDryRun,
+    batch: batchIndex ?? "all",
     processed: tickers.length,
     successes,
     failures,
