@@ -26,6 +26,14 @@ function emitUnlocks(unlocks: ClientUnlock[]): void {
 }
 
 /**
+ * Test helper: broadcasts a fake unlock to all subscribers without hitting
+ * the server. Use to preview the celebration / toast UI.
+ */
+export function previewUnlock(unlock: ClientUnlock): void {
+  emitUnlocks([unlock]);
+}
+
+/**
  * Emit a user event to the achievement engine. Fire-and-forget by default.
  * If unlocks come back, broadcasts them so the toast host can render them.
  */

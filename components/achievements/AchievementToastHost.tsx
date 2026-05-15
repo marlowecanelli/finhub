@@ -5,6 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { subscribeUnlocks, type ClientUnlock } from "@/lib/achievements/client";
 import { AchievementBadge } from "./AchievementBadge";
 import { TIER_ACCENT } from "./badges/BadgeFrame";
+import { TIER_RANK } from "@/lib/achievements/types";
 
 /**
  * Renders achievement unlock toasts in the bottom-right viewport, above the
@@ -26,10 +27,13 @@ export function AchievementToastHost() {
 
   React.useEffect(() => {
     return subscribeUnlocks((unlocks) => {
+      // Gold and above get the fullscreen celebration; toast only for bronze/silver.
+      const small = unlocks.filter((u) => TIER_RANK[u.tier] < TIER_RANK.gold);
+      if (small.length === 0) return;
       setToasts((prev) => {
         const next: ActiveToast[] = [
           ...prev,
-          ...unlocks.map((u) => ({ ...u, id: `${u.id}-${Date.now()}-${Math.random()}` })),
+          ...small.map((u) => ({ ...u, id: `${u.id}-${Date.now()}-${Math.random()}` })),
         ];
         return next.slice(-MAX_VISIBLE);
       });

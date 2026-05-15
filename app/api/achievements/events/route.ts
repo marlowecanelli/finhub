@@ -15,8 +15,17 @@ const ALLOWED_EVENTS: ReadonlySet<EventType> = new Set<EventType>([
   "calculator_used",
   "news_read",
   "watchlist_added",
+  "watchlist_removed",
   "screen_run",
+  "screen_saved",
   "ai_query_sent",
+  "ai_screen_built",
+  "claude_key_connected",
+  "portfolio_created",
+  "holding_added",
+  "goal_created",
+  "goal_hit",
+  "achievement_shared",
   "login",
 ]);
 
