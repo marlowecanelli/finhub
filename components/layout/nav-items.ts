@@ -13,6 +13,7 @@ import {
   Sparkles,
   BarChart3,
   Wallet,
+  Rocket,
   type LucideIcon,
 } from "lucide-react";
 
@@ -27,6 +28,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { label: "Calendar", href: "/calendar", icon: CalendarDays },
   { label: "Screener", href: "/screener", icon: Filter },
   { label: "Portfolio", href: "/portfolio", icon: Briefcase },
+  { label: "Paper Trading", href: "/paper-trading", icon: Rocket },
   { label: "Net Worth", href: "/networth", icon: Wallet },
   { label: "Watchlist", href: "/watchlist", icon: Star },
   { label: "Builder", href: "/builder", icon: Hammer },
