@@ -2,6 +2,11 @@ import type { Achievement, EventType } from "./types";
 import { ONBOARDING } from "./catalog/onboarding";
 import { RESEARCH } from "./catalog/research";
 import { STREAKS } from "./catalog/streaks";
+import { PORTFOLIO } from "./catalog/portfolio";
+import { NEWS } from "./catalog/news";
+import { AI_ACHIEVEMENTS } from "./catalog/ai";
+import { GOALS } from "./catalog/goals";
+import { HIDDEN } from "./catalog/hidden";
 
 /**
  * Single source of truth for the catalog. Order here drives display order
@@ -11,6 +16,11 @@ export const ALL_ACHIEVEMENTS: ReadonlyArray<Achievement> = [
   ...ONBOARDING,
   ...RESEARCH,
   ...STREAKS,
+  ...PORTFOLIO,
+  ...NEWS,
+  ...AI_ACHIEVEMENTS,
+  ...GOALS,
+  ...HIDDEN,
 ];
 
 const BY_ID: ReadonlyMap<string, Achievement> = new Map(
