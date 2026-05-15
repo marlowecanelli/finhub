@@ -19,6 +19,7 @@ import { GainersLosers } from "./gainers-losers";
 import { HoldingsTable } from "./holdings-table";
 import { AnalyticsDashboard } from "./analytics/dashboard";
 import { AiAnalyst } from "./ai-analyst";
+import { EtfPanel } from "./etf-panel";
 import { HoldingFormDialog, type HoldingFormValues } from "./holding-form-dialog";
 import { DeleteConfirm } from "./delete-confirm";
 import { PortfolioEmpty } from "./empty-state";
@@ -235,6 +236,8 @@ export function PortfolioClient({ portfolio, initialHoldings }: Props) {
             }}
             onDelete={(h) => setDeleting(h)}
           />
+
+          <EtfPanel enriched={enriched} />
 
           <AiAnalyst enriched={enriched} totals={totals} />
 

@@ -22,6 +22,11 @@ export type LiveQuote = {
   previousClose: number | null;
   currency: string;
   sector: string | null;
+  assetType: string | null;      // "EQUITY", "ETF", "MUTUALFUND", etc.
+  etfCategory: string | null;    // e.g. "Large Blend", "Intermediate Core Bond"
+  etfFamily: string | null;      // e.g. "Vanguard", "iShares", "SPDR"
+  expenseRatio: number | null;   // decimal (0.0009 = 0.09%)
+  exchange: string | null;       // e.g. "NYSEArca", "NMS", "BATS"
 };
 
 export type EnrichedHolding = Holding & {

@@ -266,6 +266,11 @@ function DesktopTable({ rows, sortField, sortDir, onSort, onEdit, onDelete }: Ta
                 <td className="px-5 py-3">
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-semibold">{r.ticker}</span>
+                    {(r.quote?.assetType === "ETF" || r.quote?.assetType === "MUTUALFUND") && (
+                      <span className="rounded bg-blue-500/10 border border-blue-500/20 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-blue-500">
+                        ETF
+                      </span>
+                    )}
                     {r.quote?.name && (
                       <span className="hidden truncate text-xs text-muted-foreground lg:inline">
                         {r.quote.name}
@@ -371,7 +376,14 @@ function MobileCards({ rows, onEdit, onDelete }: Props) {
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="font-mono text-base font-semibold">{r.ticker}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-mono text-base font-semibold">{r.ticker}</p>
+                  {(r.quote?.assetType === "ETF" || r.quote?.assetType === "MUTUALFUND") && (
+                    <span className="rounded bg-blue-500/10 border border-blue-500/20 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-blue-500">
+                      ETF
+                    </span>
+                  )}
+                </div>
                 <p className="truncate text-xs text-muted-foreground">
                   {r.quote?.name ?? "—"}
                 </p>

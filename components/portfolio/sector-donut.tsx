@@ -24,7 +24,14 @@ type SliceData = { name: string; value: number };
 export function SectorDonut({ holdings }: Props) {
   const totals = new Map<string, number>();
   for (const h of holdings) {
-    const key = h.quote?.sector ?? "Unknown";
+    let key: string;
+    if (h.quote?.sector) {
+      key = h.quote.sector;
+    } else if (h.quote?.assetType === "ETF" || h.quote?.assetType === "MUTUALFUND") {
+      key = h.quote.etfCategory ? `ETF · ${h.quote.etfCategory}` : "ETF";
+    } else {
+      key = "Unknown";
+    }
     totals.set(key, (totals.get(key) ?? 0) + h.marketValue);
   }
   const data: SliceData[] = Array.from(totals.entries())

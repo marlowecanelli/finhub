@@ -7,25 +7,61 @@ export const dynamic = "force-dynamic";
 
 const yahooFinance = new YahooFinance();
 
-// In-memory sector cache. Sector data rarely changes; quotes refresh every 60s
-// and we don't want to round-trip Yahoo for assetProfile each time.
-const sectorCache = new Map<string, { sector: string | null; expires: number }>();
-const SECTOR_TTL_MS = 24 * 60 * 60 * 1000;
+type MetadataEntry = {
+  sector: string | null;
+  assetType: string | null;
+  etfCategory: string | null;
+  etfFamily: string | null;
+  expenseRatio: number | null;
+  exchange: string | null;
+  expires: number;
+};
 
-async function getSector(symbol: string): Promise<string | null> {
-  const cached = sectorCache.get(symbol);
-  if (cached && cached.expires > Date.now()) return cached.sector;
-  try {
-    const r = await yahooFinance.quoteSummary(symbol, {
-      modules: ["assetProfile"],
-    });
-    const sector = r.assetProfile?.sector ?? null;
-    sectorCache.set(symbol, { sector, expires: Date.now() + SECTOR_TTL_MS });
-    return sector;
-  } catch {
-    sectorCache.set(symbol, { sector: null, expires: Date.now() + SECTOR_TTL_MS });
-    return null;
+const metaCache = new Map<string, MetadataEntry>();
+const META_TTL_MS = 24 * 60 * 60 * 1000;
+
+async function getMetadata(symbol: string, quoteType: string, exchangeName: string | null): Promise<MetadataEntry> {
+  const cached = metaCache.get(symbol);
+  if (cached && cached.expires > Date.now()) return cached;
+
+  const isEtf = quoteType === "ETF" || quoteType === "MUTUALFUND";
+
+  const entry: MetadataEntry = {
+    sector: null,
+    assetType: quoteType || null,
+    etfCategory: null,
+    etfFamily: null,
+    expenseRatio: null,
+    exchange: exchangeName,
+    expires: Date.now() + META_TTL_MS,
+  };
+
+  if (isEtf) {
+    try {
+      const r = await yahooFinance.quoteSummary(symbol, {
+        modules: ["fundProfile"],
+      });
+      const fund = r.fundProfile;
+      entry.etfCategory = fund?.categoryName ?? null;
+      entry.etfFamily = fund?.family ?? null;
+      const fees = fund?.feesExpensesInvestment as Record<string, number | null> | undefined;
+      entry.expenseRatio = fees?.netExpRatio ?? fees?.annualReportExpenseRatio ?? null;
+    } catch {
+      // leave nulls
+    }
+  } else {
+    try {
+      const r = await yahooFinance.quoteSummary(symbol, {
+        modules: ["assetProfile"],
+      });
+      entry.sector = r.assetProfile?.sector ?? null;
+    } catch {
+      // leave null
+    }
   }
+
+  metaCache.set(symbol, entry);
+  return entry;
 }
 
 export async function POST(req: Request) {
@@ -54,17 +90,31 @@ export async function POST(req: Request) {
   }
 
   const list = Array.isArray(raw) ? raw : [raw];
-  const sectors = await Promise.all(symbols.map((s) => getSector(s)));
+
+  const metadata = await Promise.all(
+    symbols.map((sym) => {
+      const q = list.find((x) => x.symbol?.toUpperCase() === sym);
+      const qt = (q as Record<string, unknown>)?.quoteType as string | undefined;
+      const exch = (q as Record<string, unknown>)?.fullExchangeName as string | null | undefined;
+      return getMetadata(sym, qt ?? "EQUITY", exch ?? null);
+    })
+  );
 
   const quotes: LiveQuote[] = symbols.map((sym, i) => {
     const q = list.find((x) => x.symbol?.toUpperCase() === sym);
+    const meta = metadata[i]!;
     return {
       symbol: sym,
       name: q?.longName ?? q?.shortName ?? null,
       price: q?.regularMarketPrice ?? null,
       previousClose: q?.regularMarketPreviousClose ?? null,
       currency: q?.currency ?? "USD",
-      sector: sectors[i] ?? null,
+      sector: meta.sector,
+      assetType: meta.assetType,
+      etfCategory: meta.etfCategory,
+      etfFamily: meta.etfFamily,
+      expenseRatio: meta.expenseRatio,
+      exchange: meta.exchange,
     };
   });
 
