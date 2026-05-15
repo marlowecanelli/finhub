@@ -94,14 +94,6 @@ function formatWeekday(dateStr: string): string {
   return new Date(y, m - 1, d).toLocaleDateString("en-US", { weekday: "short" });
 }
 
-function todayET(): string {
-  return new Date(
-    new Date().toLocaleString("en-US", { timeZone: "America/New_York" })
-  )
-    .toISOString()
-    .slice(0, 10);
-}
-
 // ---------------------------------------------------------------------------
 // Sub-components — recap display
 // ---------------------------------------------------------------------------
@@ -494,8 +486,11 @@ export function MarketRecapClient({ initialRecap, initialArchive }: Props) {
   const [archiveOpen, setArchiveOpen] = React.useState(false);
 
   const latestDate = archive[0]?.recap_date ?? null;
-  const today = todayET();
   const isViewingLatest = activeDate === latestDate;
+  // The archive panel shows only entries older than the current (latest) recap.
+  // Before 4:30 PM, the latest is yesterday's; after 4:30 PM the new one takes over
+  // and the previous day's entry moves into this list automatically.
+  const archivedEntries = archive.slice(1);
 
   // Navigate prev/next within archive
   const currentIdx = archive.findIndex((s) => s.recap_date === activeDate);
@@ -569,7 +564,7 @@ export function MarketRecapClient({ initialRecap, initialArchive }: Props) {
           )}
 
           {/* Archive toggle */}
-          {archive.length > 0 && (
+          {archivedEntries.length > 0 && (
             <button
               onClick={() => setArchiveOpen((v) => !v)}
               className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors ${
@@ -594,7 +589,7 @@ export function MarketRecapClient({ initialRecap, initialArchive }: Props) {
 
       {/* ── Archive panel (collapsible) ── */}
       <AnimatePresence>
-        {archiveOpen && archive.length > 0 && (
+        {archiveOpen && archivedEntries.length > 0 && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
@@ -608,10 +603,10 @@ export function MarketRecapClient({ initialRecap, initialArchive }: Props) {
                 <div className="flex items-center gap-2">
                   <CalendarDays className="w-4 h-4 text-muted-foreground" />
                   <span className="text-sm font-semibold text-foreground">
-                    Past 30 Days
+                    Past Recaps
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    ({archive.length} recap{archive.length !== 1 ? "s" : ""})
+                    ({archivedEntries.length} recap{archivedEntries.length !== 1 ? "s" : ""})
                   </span>
                 </div>
                 {!isViewingLatest && latestDate && (
@@ -626,7 +621,7 @@ export function MarketRecapClient({ initialRecap, initialArchive }: Props) {
 
               {/* Cards grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                {archive.map((summary, i) => (
+                {archivedEntries.map((summary, i) => (
                   <motion.div
                     key={summary.recap_date}
                     initial={{ opacity: 0, y: 8 }}
@@ -636,7 +631,7 @@ export function MarketRecapClient({ initialRecap, initialArchive }: Props) {
                     <ArchiveCard
                       summary={summary}
                       isActive={summary.recap_date === activeDate}
-                      isLatest={i === 0}
+                      isLatest={false}
                       onClick={() => {
                         selectDate(summary.recap_date);
                         setArchiveOpen(false);
