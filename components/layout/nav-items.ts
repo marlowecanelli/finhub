@@ -12,6 +12,7 @@ import {
   FlaskConical,
   Sparkles,
   BarChart3,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 
@@ -26,6 +27,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { label: "Calendar", href: "/calendar", icon: CalendarDays },
   { label: "Screener", href: "/screener", icon: Filter },
   { label: "Portfolio", href: "/portfolio", icon: Briefcase },
+  { label: "Net Worth", href: "/networth", icon: Wallet },
   { label: "Watchlist", href: "/watchlist", icon: Star },
   { label: "Builder", href: "/builder", icon: Hammer },
   { label: "Calculators", href: "/calculators", icon: Calculator },
