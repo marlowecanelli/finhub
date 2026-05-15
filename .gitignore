@@ -14,3 +14,6 @@ dist
 
 next-env.d.ts
 .vercel
+
+# Vercel CLI temp files
+.env.vercel.tmp
