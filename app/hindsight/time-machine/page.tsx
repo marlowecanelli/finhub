@@ -1,4 +1,5 @@
 import { TimeMachineClient } from "@/components/hindsight/TimeMachineClient";
+import { EmitOnMount } from "@/components/achievements/EmitOnMount";
 
 export const metadata = {
   title: "Time Machine · Hindsight",
@@ -11,6 +12,7 @@ type Search = { searchParams: { ticker?: string } };
 export default function TimeMachinePage({ searchParams }: Search) {
   return (
     <div className="space-y-12">
+      <EmitOnMount event="deep_dive_opened" payload={{ surface: "time-machine" }} />
       <header className="max-w-2xl">
         <div className="font-mono text-[11px] uppercase tracking-[0.3em] text-hindsight-gain/80">
           Time Machine

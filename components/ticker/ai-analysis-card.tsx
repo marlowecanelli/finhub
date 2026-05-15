@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { AiAnalysis, Recommendation } from "@/lib/types";
+import { emitEvent } from "@/lib/achievements/client";
 
 type State =
   | { kind: "loading" }
@@ -56,6 +57,8 @@ export function AiAnalysisCard({ symbol }: { symbol: string }) {
         setState({ kind: "error", message: data.error ?? "Analysis failed" });
       } else {
         setState({ kind: "ready", data });
+        void emitEvent("ai_pro_con_viewed", { symbol });
+        void emitEvent("earnings_viewed", { symbol });
       }
     } catch (err) {
       setState({ kind: "error", message: err instanceof Error ? err.message : "Network error" });

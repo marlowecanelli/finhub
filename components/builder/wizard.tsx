@@ -178,6 +178,7 @@ export function BuilderWizard() {
       if (!r.ok) throw new Error(data.error ?? "Failed to generate");
       setRecommendation(data as BuilderRecommendation);
       void emitEvent("ai_query_sent", { surface: "builder" });
+      void emitEvent("ai_screen_built", { surface: "builder" });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to generate");
     } finally {

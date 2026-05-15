@@ -10,6 +10,7 @@ import { GoalFormDialog, type GoalFormValues } from "./goal-form-dialog";
 import { UpdateProgressDialog } from "./update-progress-dialog";
 import { DeleteConfirm } from "@/components/portfolio/delete-confirm";
 import type { Goal } from "@/lib/calculators";
+import { emitEvent } from "@/lib/achievements/client";
 
 type Props = { initialGoals: Goal[] };
 
@@ -43,6 +44,7 @@ export function SavingsGoalsClient({ initialGoals }: Props) {
         .single<Goal>();
       if (error) throw error;
       setGoals((g) => [data, ...g]);
+      void emitEvent("goal_created", { goalId: data.id });
     }
     setEditing(null);
   }
@@ -50,6 +52,7 @@ export function SavingsGoalsClient({ initialGoals }: Props) {
   async function handleProgress(amount: number) {
     if (!updating) return;
     const supabase = createClient();
+    const prior = updating;
     const { data, error } = await supabase
       .from("goals")
       .update({ current_amount: amount })
@@ -58,6 +61,13 @@ export function SavingsGoalsClient({ initialGoals }: Props) {
       .single<Goal>();
     if (error) throw error;
     setGoals((g) => g.map((x) => (x.id === data.id ? data : x)));
+    // Fire goal_hit the first time current crosses target.
+    if (
+      prior.current_amount < prior.target_amount &&
+      data.current_amount >= data.target_amount
+    ) {
+      void emitEvent("goal_hit", { goalId: data.id });
+    }
   }
 
   async function handleDelete() {

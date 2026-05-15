@@ -14,8 +14,10 @@ import { motion } from "framer-motion";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn, formatCurrency, formatPercent } from "@/lib/utils";
 import type { HistoryPoint, Timeframe } from "@/lib/yahoo";
+import { emitEvent } from "@/lib/achievements/client";
 
 const TIMEFRAMES: Timeframe[] = ["1D", "5D", "1M", "3M", "1Y", "5Y", "All"];
+const ADVANCED_TIMEFRAMES: ReadonlySet<Timeframe> = new Set(["1Y", "5Y", "All"]);
 
 type Props = {
   symbol: string;
@@ -31,6 +33,12 @@ export function PriceChart({
   const [tf, setTf] = useState<Timeframe>(initialTimeframe);
   const [points, setPoints] = useState<HistoryPoint[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (ADVANCED_TIMEFRAMES.has(tf)) {
+      void emitEvent("advanced_chart_opened", { symbol, timeframe: tf });
+    }
+  }, [symbol, tf]);
 
   useEffect(() => {
     let alive = true;

@@ -82,6 +82,7 @@ export function WatchlistButton({ ticker, size = "sm" }: Props) {
         if (error) throw error;
         setWatching(false);
         t.success("Removed", `${sym} removed from watchlist`);
+        void emitEvent("watchlist_removed", { ticker: sym });
       } else {
         const { error } = await sb
           .from("watchlist_items")

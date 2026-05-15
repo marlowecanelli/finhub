@@ -1,8 +1,11 @@
+"use client";
+
 import * as React from "react";
 import { AchievementBadge } from "./AchievementBadge";
 import { TIER_ACCENT } from "./badges/BadgeFrame";
 import { cn } from "@/lib/utils";
 import type { Tier } from "@/lib/achievements/types";
+import { emitEvent } from "@/lib/achievements/client";
 
 export type AchievementCardProps = {
   id: string;
@@ -25,6 +28,38 @@ const TIER_LABEL: Record<Tier, string> = {
   platinum: "Platinum",
   mythic: "Mythic",
 };
+
+function ShareButton({ id, title }: { id: string; title: string }) {
+  const [shared, setShared] = React.useState(false);
+
+  async function handleShare() {
+    const url = `${window.location.origin}/achievements`;
+    const text = `I just unlocked "${title}" on FinHub 🏆`;
+    try {
+      if (typeof navigator !== "undefined" && navigator.share) {
+        await navigator.share({ title, text, url });
+      } else if (typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(`${text} ${url}`);
+      }
+      void emitEvent("achievement_shared", { achievementId: id });
+      setShared(true);
+      window.setTimeout(() => setShared(false), 1800);
+    } catch {
+      // user cancelled share — no-op
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={handleShare}
+      className="rounded-full border border-border/40 px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-muted-foreground transition-colors hover:border-border hover:text-foreground"
+      aria-label={`Share ${title}`}
+    >
+      {shared ? "✓ shared" : "share"}
+    </button>
+  );
+}
 
 function ProgressBar({ pct, tier }: { pct: number; tier: Tier }) {
   const accent = TIER_ACCENT[tier];
@@ -157,18 +192,21 @@ export function AchievementCard(p: AchievementCardProps) {
 
         {/* Unlocked metadata */}
         {unlocked && (
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <span className="font-mono text-[10px] text-muted-foreground">
-              Earned {new Date(p.unlockedAt!).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-            </span>
-            {p.rarityTarget < 0.1 && (
-              <span
-                className="font-mono text-[10px]"
-                style={{ color: accent.stroke }}
-              >
-                · Top {Math.round(p.rarityTarget * 100)}%
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-mono text-[10px] text-muted-foreground">
+                Earned {new Date(p.unlockedAt!).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
               </span>
-            )}
+              {p.rarityTarget < 0.1 && (
+                <span
+                  className="font-mono text-[10px]"
+                  style={{ color: accent.stroke }}
+                >
+                  · Top {Math.round(p.rarityTarget * 100)}%
+                </span>
+              )}
+            </div>
+            <ShareButton id={p.id} title={p.title} />
           </div>
         )}
       </div>

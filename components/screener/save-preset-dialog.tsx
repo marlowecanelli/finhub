@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { ScreenerFilters, ScreenerPreset } from "@/lib/screener";
+import { emitEvent } from "@/lib/achievements/client";
 
 type Props = {
   open: boolean;
@@ -49,6 +50,7 @@ export function SavePresetDialog({ open, onOpenChange, filters, onSaved }: Props
       const data = await r.json();
       if (!r.ok) throw new Error(data.error ?? "Save failed");
       onSaved(data.preset as ScreenerPreset);
+      void emitEvent("screen_saved", { name: name.trim() });
       onOpenChange(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");

@@ -1,4 +1,5 @@
 import { StressTestClient } from "@/components/hindsight/StressTestClient";
+import { EmitOnMount } from "@/components/achievements/EmitOnMount";
 
 export const metadata = {
   title: "Stress Test · Hindsight",
@@ -11,6 +12,7 @@ type Search = { searchParams: { ticker?: string } };
 export default function StressTestPage({ searchParams }: Search) {
   return (
     <div className="space-y-12">
+      <EmitOnMount event="deep_dive_opened" payload={{ surface: "stress-test" }} />
       <header className="max-w-2xl">
         <div className="font-mono text-[11px] uppercase tracking-[0.3em] text-hindsight-pain/80">
           Stress Test
