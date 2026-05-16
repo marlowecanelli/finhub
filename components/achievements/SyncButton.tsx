@@ -22,7 +22,17 @@ export function SyncButton() {
     setResult(null);
     try {
       const r = await fetch("/api/achievements/backfill", { method: "POST" });
-      const data = (await r.json()) as { unlocks?: ClientUnlock[] };
+      let data: { unlocks?: ClientUnlock[]; error?: string } = {};
+      try {
+        data = await r.json();
+      } catch {
+        // Non-JSON response (HTML error page from a crash, etc.)
+      }
+      if (!r.ok) {
+        setResult(`Sync failed: ${data.error ?? `HTTP ${r.status}`}`);
+        window.setTimeout(() => setResult(null), 8000);
+        return;
+      }
       const unlocks = data.unlocks ?? [];
       if (unlocks.length === 0) {
         setResult("Up to date — no new unlocks");
@@ -35,9 +45,10 @@ export function SyncButton() {
         router.refresh();
       }
       window.setTimeout(() => setResult(null), 4000);
-    } catch {
-      setResult("Sync failed");
-      window.setTimeout(() => setResult(null), 3000);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "network error";
+      setResult(`Sync failed: ${msg}`);
+      window.setTimeout(() => setResult(null), 8000);
     } finally {
       setBusy(false);
     }
