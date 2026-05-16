@@ -16,6 +16,10 @@ const PROTECTED_PREFIXES = [
   "/research",
 ];
 
+// Pro-gated paths. AI API routes return 402; pages redirect to /pricing.
+const PRO_PAGE_PREFIXES = ["/research", "/market-recap", "/builder"];
+const PRO_API_PREFIXES = ["/api/ai"];
+
 const AUTH_ROUTES = ["/sign-in", "/sign-up"];
 
 export async function middleware(request: NextRequest) {
@@ -64,6 +68,31 @@ export async function middleware(request: NextRequest) {
     const redirect = request.nextUrl.clone();
     redirect.pathname = "/dashboard";
     return NextResponse.redirect(redirect);
+  }
+
+  // Pro gating — only checked when the user is signed in and on a Pro path.
+  const isProApi = PRO_API_PREFIXES.some((p) => pathname.startsWith(p));
+  const isProPage = PRO_PAGE_PREFIXES.some((p) => pathname.startsWith(p));
+  if (user && (isProApi || isProPage)) {
+    const { data: sub } = await supabase
+      .from("subscriptions")
+      .select("status")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const status = (sub as { status?: string } | null)?.status ?? "";
+    const isPro = status === "active" || status === "trialing";
+    if (!isPro) {
+      if (isProApi) {
+        return NextResponse.json(
+          { error: "Pro plan required", upgrade_url: "/pricing" },
+          { status: 402 }
+        );
+      }
+      const redirect = request.nextUrl.clone();
+      redirect.pathname = "/pricing";
+      redirect.searchParams.set("locked", pathname);
+      return NextResponse.redirect(redirect);
+    }
   }
 
   return response;
