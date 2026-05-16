@@ -4,6 +4,7 @@ import { ALL_ACHIEVEMENTS } from "@/lib/achievements/registry";
 import { progressToNext } from "@/lib/achievements/levels";
 import { AchievementGrid } from "@/components/achievements/AchievementGrid";
 import { CelebrationPreview } from "@/components/achievements/CelebrationPreview";
+import { SyncButton } from "@/components/achievements/SyncButton";
 
 export const dynamic = "force-dynamic";
 
@@ -85,7 +86,10 @@ export default async function AchievementsPage() {
               Every line item, every screen, every streak. The work shows up here.
             </p>
           </div>
-          <CelebrationPreview />
+          <div className="flex flex-col items-end gap-2">
+            <SyncButton />
+            <CelebrationPreview />
+          </div>
         </div>
 
         {/* Stats grid */}
