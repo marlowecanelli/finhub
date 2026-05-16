@@ -99,18 +99,4 @@ export const ONBOARDING: ReadonlyArray<Achievement> = [
     enabled: true,
     requirement: { kind: "count", event: "screen_run", target: 1 },
   },
-  {
-    id: "the_cyborg",
-    title: "The Cyborg",
-    description: "Connect your Claude API key.",
-    flavorText: "You and the model. Co-portfolio managers now.",
-    category: "onboarding",
-    tier: "silver",
-    points: 25,
-    rarityTarget: 0.2,
-    isHidden: false,
-    isSeasonal: false,
-    enabled: true,
-    requirement: { kind: "count", event: "claude_key_connected", target: 1 },
-  },
 ];

@@ -94,19 +94,6 @@ export function GlyphCustomBuilt() {
   );
 }
 
-export function GlyphCyborg() {
-  return (
-    <g>
-      <path {...STROKE} d="M24 32 A8 8 0 0 1 40 32" />
-      <path {...STROKE} d="M40 32 A8 8 0 0 1 24 32" />
-      <circle cx={28} cy={32} r={1.4} fill="currentColor" />
-      <circle cx={36} cy={32} r={1.4} fill="currentColor" />
-      <path {...STROKE} d="M26 26 L26 22" />
-      <path {...STROKE} d="M38 26 L38 22" />
-    </g>
-  );
-}
-
 // Research ------------------------------------------------------------------
 
 export function GlyphCuriousMind() {
@@ -610,7 +597,6 @@ export const GLYPHS: Record<string, React.FC> = {
   number_cruncher: GlyphNumberCruncher,
   newsie: GlyphNewsie,
   custom_built: GlyphCustomBuilt,
-  the_cyborg: GlyphCyborg,
   // Research
   curious_mind: GlyphCuriousMind,
   market_analyst: GlyphMarketAnalyst,

@@ -3,8 +3,6 @@ import { createServerSupabase } from "@/lib/supabase-server";
 import { ALL_ACHIEVEMENTS } from "@/lib/achievements/registry";
 import { progressToNext } from "@/lib/achievements/levels";
 import { AchievementGrid } from "@/components/achievements/AchievementGrid";
-import { CelebrationPreview } from "@/components/achievements/CelebrationPreview";
-import { SyncButton } from "@/components/achievements/SyncButton";
 
 export const dynamic = "force-dynamic";
 
@@ -71,26 +69,18 @@ export default async function AchievementsPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 md:px-8">
       <header className="mb-8">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-              Profile
-            </p>
-            <h1
-              className="mt-2 text-4xl"
-              style={{ fontFamily: "var(--font-instrument-serif), serif" }}
-            >
-              Achievements
-            </h1>
-            <p className="mt-2 max-w-prose text-sm text-muted-foreground">
-              Every line item, every screen, every streak. The work shows up here.
-            </p>
-          </div>
-          <div className="flex flex-col items-end gap-2">
-            <SyncButton />
-            <CelebrationPreview />
-          </div>
-        </div>
+        <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+          Profile
+        </p>
+        <h1
+          className="mt-2 text-4xl"
+          style={{ fontFamily: "var(--font-instrument-serif), serif" }}
+        >
+          Achievements
+        </h1>
+        <p className="mt-2 max-w-prose text-sm text-muted-foreground">
+          Every line item, every screen, every streak. The work shows up here.
+        </p>
 
         {/* Stats grid */}
         <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
