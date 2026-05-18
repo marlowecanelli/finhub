@@ -20,6 +20,10 @@ const PROTECTED_PREFIXES = [
 const PRO_PAGE_PREFIXES = ["/research", "/market-recap", "/builder"];
 const PRO_API_PREFIXES = ["/api/ai"];
 
+// Kill switch: when false, the paywall is bypassed and everything is free.
+// Flip back to true to re-enable gating.
+const PAYWALL_ENABLED = false;
+
 const AUTH_ROUTES = ["/sign-in", "/sign-up"];
 
 export async function middleware(request: NextRequest) {
@@ -73,7 +77,7 @@ export async function middleware(request: NextRequest) {
   // Pro gating — only checked when the user is signed in and on a Pro path.
   const isProApi = PRO_API_PREFIXES.some((p) => pathname.startsWith(p));
   const isProPage = PRO_PAGE_PREFIXES.some((p) => pathname.startsWith(p));
-  if (user && (isProApi || isProPage)) {
+  if (PAYWALL_ENABLED && user && (isProApi || isProPage)) {
     const { data: sub } = await supabase
       .from("subscriptions")
       .select("status")
