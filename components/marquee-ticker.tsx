@@ -37,15 +37,15 @@ function formatPrice(symbol: string, price: number | null): string {
 function TickItem({ tick }: { tick: Tick }) {
   const up = (tick.changePct ?? 0) >= 0;
   return (
-    <span className="inline-flex items-center gap-2.5 px-6 py-1 text-[13px] tracking-wide whitespace-nowrap">
-      <span className="font-mono text-[10px] uppercase text-muted-foreground tracking-[0.18em]">
+    <span className="inline-flex items-center gap-2 px-4 py-0.5 text-[12px] tracking-wide whitespace-nowrap md:gap-2.5 md:px-6 md:py-1 md:text-[13px]">
+      <span className="font-mono text-[9px] uppercase text-muted-foreground tracking-[0.18em] md:text-[10px]">
         {tick.label}
       </span>
       <span className="font-mono text-foreground tabular-nums">
         {formatPrice(tick.symbol, tick.price)}
       </span>
       <span
-        className={`font-mono text-xs tabular-nums ${
+        className={`font-mono text-[11px] tabular-nums md:text-xs ${
           up ? "text-[hsl(var(--signal))]" : "text-[hsl(348_95%_65%)]"
         }`}
       >
@@ -103,7 +103,7 @@ export function MarqueeTicker() {
                   {MARKET_SYMBOLS.map((m) => (
                     <span
                       key={m.y + idx}
-                      className="inline-flex items-center gap-2.5 px-6 py-1 text-[13px] whitespace-nowrap"
+                      className="inline-flex items-center gap-2 px-4 py-0.5 text-[12px] whitespace-nowrap md:gap-2.5 md:px-6 md:py-1 md:text-[13px]"
                     >
                       <span className="font-mono text-[10px] uppercase text-muted-foreground tracking-[0.18em]">
                         {m.label}

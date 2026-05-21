@@ -134,29 +134,29 @@ export default function DashboardPage() {
         aria-hidden
       />
 
-      <div className="mx-auto max-w-[1400px] space-y-12 px-4 py-10 md:px-8 md:py-14">
+      <div className="mx-auto max-w-[1400px] space-y-8 px-4 py-6 md:space-y-12 md:px-8 md:py-14">
         {/* Today's events stripe */}
         <div className="rise-in">
           <TodayEventsStripe />
         </div>
 
         {/* Editorial masthead */}
-        <header className="rise-in border-b border-border/60 pb-8">
-          <div className="flex flex-wrap items-end justify-between gap-4">
+        <header className="rise-in border-b border-border/60 pb-6 md:pb-8">
+          <div className="flex flex-col gap-4 md:flex-row md:flex-wrap md:items-end md:justify-between">
             <div>
               <p className="editorial-eyebrow text-muted-foreground">
                 The morning edition
               </p>
-              <h1 className="mt-3 font-display text-5xl font-medium tracking-tight md:text-7xl">
+              <h1 className="mt-2 font-display text-4xl font-medium tracking-tight sm:text-5xl md:mt-3 md:text-7xl">
                 Welcome <span className="display-italic text-foreground/70">back.</span>
               </h1>
             </div>
 
-            <div className="text-right">
-              <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+            <div className="md:text-right">
+              <p className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground md:text-[11px]">
                 {now ? formatDate(now) : ""}
               </p>
-              <p className="mt-1 font-mono text-2xl tabular-nums text-foreground/85">
+              <p className="mt-1 font-mono text-xl tabular-nums text-foreground/85 md:text-2xl">
                 {now ? formatTime(now) : "—"}
                 <span className="ml-2 inline-flex h-1.5 w-1.5 translate-y-[-3px] rounded-full bg-[hsl(var(--signal))] shadow-[0_0_8px_hsl(var(--signal))] animate-[signal-pulse_2.4s_ease-in-out_infinite]" />
               </p>
@@ -166,17 +166,17 @@ export default function DashboardPage() {
 
         {/* Market overview */}
         <section className="rise-in" style={{ animationDelay: "100ms" }}>
-          <div className="mb-5 flex items-baseline justify-between">
+          <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 md:mb-5">
             <div className="flex items-baseline gap-3">
               <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                 01
               </span>
-              <h2 className="font-display text-2xl font-medium tracking-tight md:text-3xl">
+              <h2 className="font-display text-xl font-medium tracking-tight md:text-3xl">
                 Market overview
               </h2>
             </div>
-            <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-              Live · refresh 60s
+            <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground md:text-[11px]">
+              Live · 60s
             </span>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -206,7 +206,7 @@ export default function DashboardPage() {
             <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
               02
             </span>
-            <h2 className="font-display text-2xl font-medium tracking-tight md:text-3xl">
+            <h2 className="font-display text-xl font-medium tracking-tight md:text-3xl">
               Calendar
             </h2>
           </div>
@@ -219,7 +219,7 @@ export default function DashboardPage() {
             <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
               03
             </span>
-            <h2 className="font-display text-2xl font-medium tracking-tight md:text-3xl">
+            <h2 className="font-display text-xl font-medium tracking-tight md:text-3xl">
               Your workspace
             </h2>
           </div>
@@ -247,7 +247,7 @@ export default function DashboardPage() {
             <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
               04
             </span>
-            <h2 className="font-display text-2xl font-medium tracking-tight md:text-3xl">
+            <h2 className="font-display text-xl font-medium tracking-tight md:text-3xl">
               Quick actions
             </h2>
           </div>

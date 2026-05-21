@@ -1,7 +1,7 @@
 export function Footer() {
   return (
     <footer className="relative border-t border-border/60 bg-background/40 backdrop-blur-sm">
-      <div className="mx-auto max-w-[1400px] px-6 py-10 md:px-10">
+      <div className="mx-auto max-w-[1400px] px-5 py-8 md:px-10 md:py-10">
         <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
           {/* Brand */}
           <div>
@@ -24,11 +24,11 @@ export function Footer() {
           </p>
         </div>
 
-        <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-border/40 pt-6">
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-border/40 pt-5 md:mt-8 md:pt-6">
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
             © {new Date().getFullYear()} · FinHub Editorial · Vol. 1
           </p>
-          <p className="font-serif text-sm italic text-foreground/45">
+          <p className="hidden font-serif text-sm italic text-foreground/45 md:block">
             Set in Instrument Serif &amp; Inter.
           </p>
         </div>

@@ -1,5 +1,6 @@
 import { Sidebar } from "@/components/layout/sidebar";
 import { TopBar } from "@/components/layout/top-bar";
+import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { PageTransition } from "@/components/layout/page-transition";
 import { Footer } from "@/components/layout/footer";
 import { MarqueeTicker } from "@/components/marquee-ticker";
@@ -54,11 +55,12 @@ export default async function AppLayout({
       <div className="relative flex min-w-0 flex-1 flex-col">
         <TopBar email={email} name={name} avatarUrl={avatarUrl} />
         <MarqueeTicker />
-        <main className="flex-1">
+        <main className="flex-1 pb-[calc(64px+env(safe-area-inset-bottom))] md:pb-0">
           <PageTransition>{children}</PageTransition>
         </main>
         <Footer />
       </div>
+      <MobileBottomNav />
       <AchievementToastHost />
       <AchievementCelebration />
     </div>
