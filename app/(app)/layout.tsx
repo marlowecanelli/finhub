@@ -39,7 +39,7 @@ export default async function AppLayout({
   const { email, name, avatarUrl } = await getUser();
 
   return (
-    <div className="relative flex min-h-screen bg-background">
+    <div className="relative flex min-h-screen overflow-x-clip bg-background">
       {/* Atmospheric layers */}
       <div
         className="bg-dotgrid pointer-events-none fixed inset-0 opacity-[0.4]"
@@ -52,7 +52,7 @@ export default async function AppLayout({
 
       <Sidebar />
 
-      <div className="relative flex min-w-0 flex-1 flex-col">
+      <div className="relative flex min-w-0 flex-1 flex-col overflow-x-clip">
         <TopBar email={email} name={name} avatarUrl={avatarUrl} />
         <MarqueeTicker />
         <main className="flex-1 pb-[calc(64px+env(safe-area-inset-bottom))] md:pb-0">

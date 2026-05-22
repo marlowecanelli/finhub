@@ -24,7 +24,7 @@ export function MarketCard({
   const colorVar = up ? "hsl(var(--signal))" : "hsl(348 95% 65%)";
 
   const inner = (
-    <div className={cn("card-edge group relative overflow-hidden rounded-xl border border-border/80 bg-card/40 p-6 backdrop-blur-xl lift", href && "cursor-pointer")}>
+    <div className={cn("card-edge group relative overflow-hidden rounded-2xl border border-border/80 bg-card/40 p-4 backdrop-blur-xl lift md:p-6", href && "cursor-pointer")}>
       {/* Hover glow */}
       <div
         aria-hidden
@@ -45,13 +45,13 @@ export function MarketCard({
           <Icon className="h-3.5 w-3.5 text-foreground/30 transition-colors group-hover:text-foreground/70" />
         </div>
 
-        <div className="mt-5 flex items-end justify-between gap-3">
-          <p className="font-display text-3xl font-medium tracking-tight tabular-nums md:text-4xl">
+        <div className="mt-4 flex items-end justify-between gap-2 md:mt-5 md:gap-3">
+          <p className="font-display text-xl font-medium tracking-tight tabular-nums sm:text-2xl md:text-4xl">
             {value}
           </p>
           <span
             className={cn(
-              "inline-flex shrink-0 items-center gap-1 font-mono text-xs tabular-nums"
+              "inline-flex shrink-0 items-center gap-1 font-mono text-[10px] tabular-nums md:text-xs"
             )}
             style={{ color: colorVar }}
           >
@@ -59,7 +59,7 @@ export function MarketCard({
           </span>
         </div>
 
-        <div className="mt-5 h-12 w-full overflow-hidden">
+        <div className="mt-4 h-8 w-full overflow-hidden md:mt-5 md:h-12">
           <Sparkline up={up} color={colorVar} />
         </div>
 

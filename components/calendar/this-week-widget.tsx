@@ -42,7 +42,7 @@ export function ThisWeekWidget() {
   }, [events]);
 
   return (
-    <div className="glass overflow-hidden p-5">
+    <div className="glass overflow-hidden p-4 md:p-5">
       <div className="flex items-center justify-between">
         <div>
           <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
@@ -60,7 +60,7 @@ export function ThisWeekWidget() {
         </Link>
       </div>
 
-      <div className="mt-5 grid grid-cols-7 gap-1.5">
+      <div className="mt-4 grid grid-cols-7 gap-1 md:mt-5 md:gap-1.5">
         {days.map((d) => {
           const ymd = formatYMD(d);
           const dayEvents = byDay.get(ymd) ?? [];
@@ -71,16 +71,16 @@ export function ThisWeekWidget() {
               key={ymd}
               href={`/calendar?date=${ymd}`}
               className={
-                "flex flex-col gap-1 rounded-lg border bg-background/40 p-2 transition-all hover:-translate-y-px hover:border-foreground/40 " +
+                "flex min-w-0 flex-col gap-1 rounded-lg border bg-background/40 p-1.5 transition-all hover:-translate-y-px hover:border-foreground/40 md:p-2 " +
                 (isToday ? "border-[hsl(var(--signal))]" : "border-border/60")
               }
             >
               <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground">
-                {d.toLocaleDateString("en-US", { weekday: "short" })}
+                {d.toLocaleDateString("en-US", { weekday: "narrow" })}
               </span>
               <span
                 className={
-                  "font-mono text-lg tabular-nums " +
+                  "font-mono text-base tabular-nums md:text-lg " +
                   (isToday ? "signal-glow text-[hsl(var(--signal))]" : "text-foreground")
                 }
               >
