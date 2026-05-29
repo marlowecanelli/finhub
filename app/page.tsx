@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Footer } from "@/components/layout/footer";
 import { MarqueeTicker } from "@/components/marquee-ticker";
+import { ImpactSection } from "@/components/impact/impact-section";
 
 const FEATURES = [
   {
@@ -334,6 +335,9 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+
+        {/* ─── IMPACT / PAST PROJECTS ─── */}
+        <ImpactSection />
 
         {/* ─── CLOSING SPREAD ─── */}
         <section className="relative border-t border-border/60">
