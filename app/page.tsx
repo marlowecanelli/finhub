@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Footer } from "@/components/layout/footer";
 import { MarqueeTicker } from "@/components/marquee-ticker";
 import { ImpactSection } from "@/components/impact/impact-section";
+import { HeroBackdrop } from "@/components/hero/hero-backdrop";
 
 const FEATURES = [
   {
@@ -109,7 +110,8 @@ export default function LandingPage() {
 
       <main className="relative z-10">
         {/* ─── HERO ─── */}
-        <section className="relative mx-auto max-w-[1400px] px-6 pt-16 pb-32 md:px-10 md:pt-28 md:pb-40">
+        <section className="relative isolate mx-auto max-w-[1400px] px-6 pt-16 pb-32 md:px-10 md:pt-28 md:pb-40">
+          <HeroBackdrop />
           <div className="grid grid-cols-12 gap-y-10">
             {/* Eyebrow + edition slug — top-left, editorial slug */}
             <div className="col-span-12 lg:col-span-3">
